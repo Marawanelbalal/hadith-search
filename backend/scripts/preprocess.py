@@ -5,7 +5,6 @@ from nltk import pos_tag
 from nltk.corpus import stopwords
 import pyarabic.araby as araby
 import qalsadi.lemmatizer
-
 import re
 
 def get_wordnet_pos(tag): #this is needed to convert nltk pos to wordnet pos
@@ -25,23 +24,32 @@ def lemmatize_english(tokens,lemmatizer):
 
 
 def remove_stopwords_english(tokens):
-  stop_words = set(stopwords.words('english'))
-  tokens_without_stopwords = [word for word in tokens if word not in stop_words]
+  stop_words = stopwords.words('english')
+  extra_stopwords = [
+      "say",
+      "narrate",
+      "narration",
+      "correct",
+      "weak"
+  ]
+  stop_words += extra_stopwords
+  tokens_without_stopwords = [word for word in tokens if word not in set(stop_words)]
   return tokens_without_stopwords
 
 def preprocess_english(text,lemmatizer):
-  text = re.sub(r'[^\w\s]',"",text.lower())
-  tokens = word_tokenize(text)
-  lemmatized_tokens = lemmatize_english(tokens,lemmatizer)
-  final_tokens = remove_stopwords_english(lemmatized_tokens)
-  return " ".join(final_tokens)
+    text = re.sub(r"[^a-zA-Z\s]", "", text.lower())
+    tokens = word_tokenize(text)
+    tokens = remove_stopwords_english(tokens)
+    lemmatized_tokens = lemmatize_english(tokens,lemmatizer)
+    final_tokens = remove_stopwords_english(lemmatized_tokens)
+    return " ".join(final_tokens)
+
 
 # Arabic pipeline
 
 def normalize_arabic(text):
     text = araby.strip_diacritics(text)
     text = araby.strip_tatweel(text)
-    text = araby.normalize_hamza(text, method="tasheel")
     return text
 
 def lemmatize_arabic(text,lemmatizer):
@@ -49,15 +57,35 @@ def lemmatize_arabic(text,lemmatizer):
     return lemmas_with_pos
 
 def remove_stopwords_arabic(lemmas_with_pos):
-    lemmas_with_pos = [(word,pos) for word,pos in lemmas_with_pos if pos != 'stopword']
-    lemmas = [word for word,_ in lemmas_with_pos]
-    return lemmas
+    extra_stopwords = [
+                    "قال",
+                    "حدث",
+                    "روى",
+                    "صلى",
+                    "سلم",
+                    "حديث",
+                    "ضعيف",
+                    "قوى",
+                ]
+    tokens = [
+        word for word, pos in lemmas_with_pos
+        if pos != "stopword" and word not in extra_stopwords
+    ]
+    return tokens
 
-def preprocess_arabic(text,lemmatizer):
+def preprocess_arabic(text, lemmatizer):
+
+    text = re.sub(r"[^\u0600-\u06FF\s]", "", text) #keep only arabic letters
+
     text = normalize_arabic(text)
-    text_lemmas_with_pos = lemmatize_arabic(text,lemmatizer)
-    final_tokens = remove_stopwords_arabic(text_lemmas_with_pos)
-    return " ".join(final_tokens)
+
+    lemmas_with_pos = lemmatize_arabic(text, lemmatizer)
+
+    final_tokens = remove_stopwords_arabic(lemmas_with_pos)  
+
+    final_text = araby.normalize_hamza(" ".join(final_tokens), method="tasheel")
+
+    return final_text
 
 if __name__ == "__main__":
     import os
@@ -93,15 +121,15 @@ if __name__ == "__main__":
             preprocess_arabic(row.Arabic_Text,arabicLemmatizer), 
             row.id))
     print("Preprocessing Successful, current state of DB:")
-    df = pd.read_sql("SELECT * FROM HADITHS LIMIT 300;", connection)
+    df = pd.read_sql("SELECT * FROM HADITHS LIMIT 20", connection)
     for index,row in df.iterrows():
         print(f"Hadith: {index}\n")
         print(f"English Text: {row['English_Text']}\n")
         print(f"Arabic Text: {row['Arabic_Text']}\n")
-        print(f"English Text After Preprocessing: {row['preprocessed_english']}\n")
-        print(f"Arabic Text After Preprocessing: {row['preprocessed_arabic']}\n")
+        print(f"English Text After Preprocessing: {row['Preprocessed_English']}\n")
+        print(f"Arabic Text After Preprocessing: {row['Preprocessed_Arabic']}\n")
         print("\n\n")
-    print(df)
+    print(df.info())
     connection.commit()
     connection.close()
     end = time.perf_counter()

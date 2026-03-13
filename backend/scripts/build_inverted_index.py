@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import json
 import sqlite3
 import pickle
 
@@ -14,46 +13,95 @@ df = pd.read_sql("SELECT * FROM HADITHS", connection)
 
 english_inverted_index = {}
 arabic_inverted_index = {}
-
-def create_posting_english(term,document):
-    tokens = document['preprocessed_english'].split()
-    return {"doc_id":document['id'],"tf":tokens.count(term)}
-
-def create_posting_arabic(term,document):
-    tokens = document['preprocessed_arabic'].split()
-    return {"doc_id":document['id'],"tf":tokens.count(term)}
-for _,row in df.iterrows():
-    english_text = row["preprocessed_english"]
-    arabic_text = row["preprocessed_arabic"]
-    english_terms = set(english_text.split())
-    arabic_terms = set(arabic_text.split())
-    for term in english_terms:
-        if term not in english_inverted_index:
-            english_inverted_index[term] = {"doc_frequency": 1,"postings":[create_posting_english(term,row)]}
+document_lengths = {} # store document lengths for each document as a tuple: {doc_id:(arabic_length,english_length)}
+def create_term_frequency_dict(text):
+    terms = text.split()
+    term_frequency_dict = {}
+    for term in terms:
+        if term in term_frequency_dict:
+            term_frequency_dict[term] += 1
         else:
-            english_inverted_index[term]["doc_frequency"] += 1
-            english_inverted_index[term]["postings"].append(create_posting_english(term,row))
+            term_frequency_dict[term] = 1
+    return term_frequency_dict
 
-    for term in arabic_terms:
-        if term not in arabic_inverted_index:
-            arabic_inverted_index[term] = {"doc_frequency": 1,"postings":[create_posting_arabic(term,row)]}
-        else:
-            arabic_inverted_index[term]["doc_frequency"] += 1
-            arabic_inverted_index[term]["postings"].append(create_posting_arabic(term,row))
-    
 
-for term in english_inverted_index:
-    english_inverted_index[term]["postings"] = sorted(
-        english_inverted_index[term]["postings"], 
-        key=lambda x: x["doc_id"]
-    )
-for i, ((english_key, english_value), (arabic_key, arabic_value)) in enumerate(zip(english_inverted_index.items(), arabic_inverted_index.items())):
-    if i == 20:
-        break
-    print(f"English Term ({english_key}): {english_value}\n")
-    print(f"Arabic Term ({arabic_key}): {arabic_value}\n")
+def build_inverted_index():
+    for _,row in df.iterrows():
+        english_text = row["Preprocessed_English"]
+        arabic_text = row["Preprocessed_Arabic"]
+        english_terms = english_text.split()
+        arabic_terms = arabic_text.split()
 
-with open(os.path.join(DATA_DIR, "english_inverted_index.pkl"), "wb") as f:
-    pickle.dump(english_inverted_index, f)
-with open(os.path.join(DATA_DIR, "arabic_inverted_index.pkl"), "wb") as f:
-    pickle.dump(arabic_inverted_index, f)
+        document_lengths[row['id']] = (
+                                    len(arabic_terms),
+                                    len(english_terms),
+                                    ) #for tf-idf and bm25
+        arabic_term_frequency_dict = create_term_frequency_dict(arabic_text)
+        english_term_frequency_dict = create_term_frequency_dict(english_text)
+        for term in english_term_frequency_dict.keys():
+
+            if term not in english_inverted_index:
+                english_inverted_index[term] = [
+                    (
+                        row['id'],
+                        english_term_frequency_dict[term]
+                    )
+                    ]
+            else:
+                english_inverted_index[term].append(
+                    (
+                        row['id'],
+                        english_term_frequency_dict[term]
+                    )
+                )
+
+        for term in arabic_term_frequency_dict.keys():
+            if term not in arabic_inverted_index:
+                arabic_inverted_index[term] = [
+                    (
+                        row['id'],
+                        arabic_term_frequency_dict[term]
+                    )
+                    ]
+            else:
+                arabic_inverted_index[term].append(
+                    (
+                        row['id'],
+                        arabic_term_frequency_dict[term]
+                    )
+                )
+
+    for term in english_inverted_index.keys():
+        english_inverted_index[term] = sorted(
+            english_inverted_index[term], 
+            key=lambda x: x[0]
+        )
+    for term in arabic_inverted_index.keys():
+        arabic_inverted_index[term] = sorted(
+            arabic_inverted_index[term], 
+            key=lambda x: x[0]
+        )
+
+    #for debugging
+    for i, ((english_key, english_value), (arabic_key, arabic_value)) in enumerate(zip(english_inverted_index.items(), arabic_inverted_index.items())):
+        if i == 20:
+            break
+        print(f"English Term ({english_key}): {english_value}\n")
+        print(f"Arabic Term ({arabic_key}): {arabic_value}\n")
+
+    with open(os.path.join(DATA_DIR, "english_inverted_index.pkl"), "wb") as f:
+        pickle.dump(english_inverted_index, f)
+
+    with open(os.path.join(DATA_DIR, "arabic_inverted_index.pkl"), "wb") as f:
+        pickle.dump(arabic_inverted_index, f)
+
+    with open(os.path.join(DATA_DIR, "document_lengths.pkl"), "wb") as f:
+        pickle.dump(document_lengths,f)
+
+
+if __name__ == "__main__":
+    import time
+    start = time.perf_counter()
+    build_inverted_index()
+    end = time.perf_counter()
+    print(f"Inverted Index building took {round(end-start,3)}s")

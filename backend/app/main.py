@@ -18,5 +18,3 @@ def get_hadith(hadith_id: int):
     if df.empty:
         return {"error": "not found"}
     return df.iloc[0].to_dict()
-
-

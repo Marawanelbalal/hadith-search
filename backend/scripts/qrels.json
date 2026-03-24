@@ -1,0 +1,143 @@
+{
+  "EN1_man_asked_best_deed": {
+    "query": "a man asked the prophet about the best deed",
+    "relevant_ids": [
+      12887,
+      8803,
+      3459,
+      12363,
+      28665
+    ]
+  },
+  "EN2_be_kind_to_close": {
+    "query": "be kind to those who are close to you",
+    "relevant_ids": [
+      4131,
+      4135,
+      4129,
+      13412,
+      27396,
+      18114,
+      20394,
+      17168,
+      2070,
+      17304,
+      2099,
+      32994,
+      32995
+    ]
+  },
+  "EN3_tongue_cause_sins": {
+    "query": "the tongue is the cause of most sins",
+    "relevant_ids": [
+      23573,
+      27678,
+      2099,
+      33432,
+      17168,
+      14780,
+      2738,
+      4185,
+      32049,
+      17858
+    ]
+  },
+  "EN4_what_breaks_fast": {
+    "query": "what breaks the fast",
+    "relevant_ids": [
+      13308,
+      30341,
+      6440,
+      30372,
+      30355,
+      725,
+      18672,
+      6640,
+      27532
+    ]
+  },
+  "EN5_woman_came_with_complaint": {
+    "query": "a woman came to the prophet with a complaint",
+    "relevant_ids": [
+      13549,
+      8401,
+      20799,
+      21575,
+      16530,
+      33370,
+      18496,
+      21461,
+      10583
+    ]
+  },
+  "AR1_man_asked_best_deeds": {
+    "query": "سأله رجل عن أفضل الأعمال",
+    "relevant_ids": [
+      12887,
+      8803,
+      3459,
+      12363,
+      28665
+    ]
+  },
+  "AR2_punishment_for_lying": {
+    "query": "عقوبة الكذب",
+    "relevant_ids": [
+      23573,
+      27678,
+      17168,
+      14780,
+      2738,
+      33432,
+      4185,
+      32049
+    ]
+  },
+  "AR3_muslim_treats_neighbor": {
+    "query": "كيف يتعامل المسلم مع جاره",
+    "relevant_ids": [
+      4131,
+      4135,
+      4129,
+      2099,
+      18114,
+      27396,
+      17304,
+      32994,
+      32995,
+      13247
+    ]
+  },
+  "AR4_virtue_of_fasting": {
+    "query": "فضل الصيام",
+    "relevant_ids": [
+      18672,
+      6640,
+      27532,
+      21146,
+      25414,
+      30304,
+      30466,
+      30482,
+      6588,
+      6680,
+      25372,
+      25471
+    ]
+  },
+  "AR5_what_invalidates_prayer": {
+    "query": "ما يفسد الصلاة",
+    "relevant_ids": [
+      12616,
+      302,
+      22784,
+      11635,
+      125,
+      76,
+      28490,
+      28163,
+      4511,
+      14844
+    ]
+  }
+}

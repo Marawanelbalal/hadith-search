@@ -3,13 +3,7 @@ import pandas as pd
 import sqlite3
 import pickle
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "..", "data")
-DB_PATH = os.path.join(DATA_DIR, "hadiths.db")
 
-#English Inverted Index first
-connection = sqlite3.connect(DB_PATH)
-df = pd.read_sql("SELECT * FROM HADITHS", connection)
 
 english_inverted_index = {}
 arabic_inverted_index = {}
@@ -26,6 +20,17 @@ def create_term_frequency_dict(text):
 
 
 def build_inverted_index():
+    import sqlite3, pandas as pd, os
+    conn = sqlite3.connect(DB_PATH)
+    sample = pd.read_sql("SELECT Arabic_Text, Preprocessed_Arabic FROM hadiths LIMIT 5", conn)
+    conn.close()
+
+    for _, row in sample.iterrows():
+        original_len = len(row["Arabic_Text"].split())
+        preprocessed_len = len(row["Preprocessed_Arabic"].split())
+        print(f"Original:     {original_len} tokens | {row['Arabic_Text'][:80]}")
+        print(f"Preprocessed: {preprocessed_len} tokens | {row['Preprocessed_Arabic'][:80]}")
+        print(f"Reduction:    {round((1 - preprocessed_len/original_len)*100)}%\n")
     for _,row in df.iterrows():
         english_text = row["Preprocessed_English"]
         arabic_text = row["Preprocessed_Arabic"]
@@ -82,12 +87,12 @@ def build_inverted_index():
             key=lambda x: x[0]
         )
 
-    #for debugging
-    for i, ((english_key, english_value), (arabic_key, arabic_value)) in enumerate(zip(english_inverted_index.items(), arabic_inverted_index.items())):
-        if i == 20:
-            break
-        print(f"English Term ({english_key}): {english_value}\n")
-        print(f"Arabic Term ({arabic_key}): {arabic_value}\n")
+    # #for debugging
+    # for i, ((english_key, english_value), (arabic_key, arabic_value)) in enumerate(zip(english_inverted_index.items(), arabic_inverted_index.items())):
+    #     if i == 20:
+    #         break
+    #     print(f"English Term ({english_key}): {english_value}\n")
+    #     print(f"Arabic Term ({arabic_key}): {arabic_value}\n")
 
     with open(os.path.join(DATA_DIR, "english_inverted_index.pkl"), "wb") as f:
         pickle.dump(english_inverted_index, f)
@@ -100,6 +105,13 @@ def build_inverted_index():
 
 
 if __name__ == "__main__":
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = os.path.join(BASE_DIR, "..", "data")
+    DB_PATH = os.path.join(DATA_DIR, "hadiths.db")
+
+    #English Inverted Index first
+    connection = sqlite3.connect(DB_PATH)
+    df = pd.read_sql("SELECT * FROM HADITHS", connection)
     import time
     start = time.perf_counter()
     build_inverted_index()

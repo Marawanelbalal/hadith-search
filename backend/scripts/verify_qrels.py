@@ -24,7 +24,7 @@ for query_id, data in qrels.items():
         ).fetchone()
 
         if not row:
-            print(f"\n  [!] ID {doc_id} NOT FOUND IN DATABASE")
+            print(f"\n  [!] ID {doc_id} was NOT FOUND IN DATABASE")
             continue
 
         hadith_id, book, chapter, english, arabic = row

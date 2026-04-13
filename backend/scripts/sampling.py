@@ -13,12 +13,9 @@ def sample_hadiths(total_sample: int = 500) -> pd.DataFrame:
     group_proportions = group_counts / len(df)
     group_sample_sizes = (group_proportions * total_sample).round().astype(int)
 
-    # Every group gets at least 1
     group_sample_sizes = group_sample_sizes.clip(lower=1)
 
-    # Scale down proportionally to hit exactly 500
     while group_sample_sizes.sum() > total_sample:
-        # Reduce the largest group by 1
         group_sample_sizes.iloc[group_sample_sizes.argmax()] -= 1
 
     while group_sample_sizes.sum() < total_sample:

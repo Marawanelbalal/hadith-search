@@ -1,8 +1,6 @@
 import pickle
 import os
 from scripts.preprocess import preprocess_arabic,preprocess_english
-from nltk.stem import WordNetLemmatizer
-import qalsadi.lemmatizer
 import sqlite3
 import pandas as pd
 from math import log10
@@ -33,14 +31,12 @@ def load_index_and_preprocess(query: str, language: str = "EN") -> tuple[Inverte
     language = language.upper()
     if language == "EN":
         inverted_index = load_english_inverted_index()
-        lemmatizer = WordNetLemmatizer()
     elif language == "AR":
         inverted_index = load_arabic_inverted_index()
-        lemmatizer = qalsadi.lemmatizer.Lemmatizer()
     else:
         raise ValueError(f"Invalid language: {language}. Expected 'EN' or 'AR'")
     
-    preprocessed_query = preprocess_arabic(query, lemmatizer) if language == "AR" else preprocess_english(query, lemmatizer)
+    preprocessed_query = preprocess_arabic(query) if language == "AR" else preprocess_english(query)
     return inverted_index, preprocessed_query
 
 def ranked_boolean_retrieval(query : str,language: str ="EN") -> dict[int,int]:
@@ -56,7 +52,10 @@ def ranked_boolean_retrieval(query : str,language: str ="EN") -> dict[int,int]:
         for hadith_id in term_hadith_ids:
             valid_hadiths[hadith_id] = valid_hadiths.get(hadith_id,0) + 1
 
-    sorted_hadiths = dict(sorted(valid_hadiths.items(), key=lambda item: item[1], reverse=True))
+    sorted_hadiths = dict(sorted(
+        valid_hadiths.items(),
+        key=lambda item: (-item[1], item[0])  # count desc, doc_id asc
+    ))    
     return sorted_hadiths
 
 
@@ -85,34 +84,33 @@ def tf_idf(query: str,language: str ="EN") -> dict[int,float]:
     return sorted_hadiths
 
 
-def bm25(query : str,language : str ="EN",k1 : float =1.2,b : float=0.75) -> dict[int,float]:
+def bm25(query: str, language: str = "EN", k1: float = 1.2, b: float = 0.75) -> dict[int, float]:
     language = language.upper()
-    inverted_index,query = load_index_and_preprocess(query,language)
-    document_scores = {}
-    term_query_frequency = {}
+    inverted_index, query = load_index_and_preprocess(query, language)
     document_lengths = load_document_lengths()
+    
+    lang_idx = 0 if language == "AR" else 1
+    lavg = sum(v[lang_idx] for v in document_lengths.values()) / len(document_lengths)
+    
     query_terms = query.split()
-
+    term_query_frequency = {}
     for term in query_terms:
-        term_query_frequency[term] = term_query_frequency.get(term,0) + 1
+        term_query_frequency[term] = term_query_frequency.get(term, 0) + 1
 
-    for term in term_query_frequency:
+    document_scores = {}
+    for term, qtf in term_query_frequency.items():
         if term not in inverted_index:
             continue
         postings = inverted_index[term]
         df = len(postings)
-        idf_component = log10((len(document_lengths) - df + 0.5) / (df + 0.5))
-        for posting in postings: #posting = (hadith_id,term_frequency)
-            hadith_id = posting[0]
-            tf = posting[1]
-            ld = document_lengths[hadith_id][0 if language == "AR" else 1] #length of document
-            lavg = sum(document_lengths.keys()) / len(document_lengths) #average length of all docs
-            tf_component = ((k1 + 1) * tf) / k1 * ((1-b) + b*(ld/lavg)) + tf
-            bm25_score = tf_component * idf_component
-            document_scores[hadith_id] = document_scores.get(hadith_id, 0) + bm25_score
-    sorted_hadiths = dict(sorted(document_scores.items(), key=lambda item: item[1], reverse=True))
+        idf = log10((len(document_lengths) - df + 0.5) / (df + 0.5))
+        
+        for hadith_id, tf in postings:
+            ld = document_lengths[hadith_id][lang_idx]
+            tf_component = ((k1 + 1) * tf) / (k1 * ((1 - b) + b * (ld / lavg)) + tf)
+            document_scores[hadith_id] = document_scores.get(hadith_id, 0) + tf_component * idf
 
-    return sorted_hadiths
+    return dict(sorted(document_scores.items(), key=lambda x: x[1], reverse=True))
 
 def get_hadith(hadith_id: int) -> dict:
     

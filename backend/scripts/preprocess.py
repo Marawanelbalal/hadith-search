@@ -11,7 +11,6 @@ from camel_tools.utils.dediac import dediac_ar
 from camel_tools.utils.normalize import normalize_alef_ar, normalize_alef_maksura_ar, normalize_teh_marbuta_ar
 
 _mle = None
-_englishLemmatizer = None
 
 def get_mle():
     global _mle
@@ -19,6 +18,7 @@ def get_mle():
         print("Loading CAMeL Tools MLE model...")
         _mle = MLEDisambiguator.pretrained('calima-msa-r13')
     return _mle
+_englishLemmatizer = None
 
 def get_english_lemmatizer():
     global _englishLemmatizer
@@ -50,12 +50,12 @@ def get_stop_words_english():
             "say", "narrate", "told", "informed", "reported", "transmitted", "heard",
             "narration", "authority",
             "correct", "weak",
-            "bin", "ibn", "abu", "abi"
+            "bin", "ibn", "abu", "abi", "hadith"
         }
         _stop_words_en = set(stopwords.words('english')) | extra
     return _stop_words_en
 
-def remove_stopwords_english(tokens):
+def remove_stopwords_english(tokens:list[str])->list[str]:
     stop_words = get_stop_words_english()
     return [word for word in tokens if word not in stop_words and len(word) >= 3]
 
@@ -128,7 +128,7 @@ def normalize_arabic_text(text):
     text = normalize_alef_maksura_ar(text)
     text = normalize_teh_marbuta_ar(text)
     text = araby.normalize_hamza(text, method="tasheel")
-    text = araby.strip_tatweel(text)  # tatweel is safe to remove, as it's purely for looks
+    text = araby.strip_tatweel(text)  # tatweel is safe to remove, as it's only for looks
     text = re.sub(r"\s+", " ", text).strip()
     return text
 

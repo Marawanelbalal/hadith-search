@@ -16,9 +16,7 @@ def profile_db():
     missing = df.isnull().sum()
     print(missing[missing > 0] if missing.any() else "No missing nulls (but check empty strings below)")
 
-    # ---------------------------------------------------------
-    # NEW: Empty Text Detection (Raw and Preprocessed)
-    # ---------------------------------------------------------
+
     print("\n=== Empty Text Detection ===")
     
     # Create boolean masks for empty strings or purely whitespace
@@ -30,7 +28,6 @@ def profile_db():
     print(f"Hadiths missing English text: {empty_en_raw.sum()}")
     print(f"Hadiths missing BOTH (Overlap): {(empty_ar_raw & empty_en_raw).sum()}")
 
-    # Check the preprocessed columns in case the stopword filter completely emptied them
     if 'Preprocessed_Arabic' in df.columns and 'Preprocessed_English' in df.columns:
         empty_ar_prep = df['Preprocessed_Arabic'].isna() | (df['Preprocessed_Arabic'].astype(str).str.strip() == '')
         empty_en_prep = df['Preprocessed_English'].isna() | (df['Preprocessed_English'].astype(str).str.strip() == '')
@@ -53,7 +50,7 @@ def profile_db():
 
     if 'Grade' in df.columns:
         print("\n=== Grade Distribution ===")
-        print(df['Grade'].value_counts(dropna=False).head(10)) # Added .head(10) so it doesn't spam your terminal
+        print(df['Grade'].value_counts(dropna=False).head(10))
 
     if 'Normalized_Grade' in df.columns:
         print("\n=== Normalized Grade Distribution ===")

@@ -133,7 +133,6 @@ def normalize_grades(conn):
     for grade, count in dist:
         print(f"{count:6d} | {grade}")
 
-# --- Main ---
 
 def main():
     conn = sqlite3.connect(DB_PATH)

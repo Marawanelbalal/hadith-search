@@ -179,7 +179,7 @@ if __name__ == "__main__":
     import json
     import os
     import sqlite3
-    from scripts.search import ranked_boolean_retrieval, tf_idf, bm25
+    from scripts.search import ranked_boolean_retrieval, tf_idf, bm25, bm25_with_expansion, bm25_tfidf_hybrid, hybrid_with_expansion
     
     def get_filtered_ranked_ids(results: dict[int, float], eval_ids: set[int]) -> dict[int, float]:
         filtered_dict = {doc_id: score for doc_id, score in results.items() if doc_id in eval_ids}
@@ -212,6 +212,9 @@ if __name__ == "__main__":
         "Boolean": lambda q, lang: get_filtered_ranked_ids(ranked_boolean_retrieval(q, lang), eval_ids),
         "TF-IDF":  lambda q, lang: get_filtered_ranked_ids(tf_idf(q, lang), eval_ids),
         "BM25":    lambda q, lang: get_filtered_ranked_ids(bm25(q, lang), eval_ids),
+        "BM25+ROCCHIO": lambda q,lang: get_filtered_ranked_ids(bm25_with_expansion(q, lang), eval_ids),
+        "BM25_TF_IDF": lambda q,lang: get_filtered_ranked_ids(bm25_tfidf_hybrid(q, lang), eval_ids),
+        "BM25_TF_IDF+ROCCHIO": lambda q,lang: get_filtered_ranked_ids(hybrid_with_expansion(q, lang), eval_ids),
     }
 
     k = 20

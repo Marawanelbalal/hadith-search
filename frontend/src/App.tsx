@@ -1,35 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import Footer from './components/Footer';
+import Header from './components/Header';
+import BenchmarksPage from './pages/BenchmarksPage';
+import DevModePage from './pages/DevModePage';
+import HomePage from './pages/HomePage';
+import LoadingPage from './pages/LoadingPage';
+import ResultsPage from './pages/ResultsPage';
 
-function App() {
-  const [count, setCount] = useState(0)
-
+const App = () => {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <MemoryRouter>
+      <div className="flex flex-col min-h-screen bg-background text-on-background font-body-main text-body-main antialiased">
+        <Header />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/results" element={<ResultsPage />} />
+          <Route path="/dev" element={<DevModePage />} />
+          <Route path="/benchmarks" element={<BenchmarksPage />} />
+          <Route path="/loading" element={<LoadingPage />} />
+        </Routes>
+        <Footer />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    </MemoryRouter>
+  );
+};
 
-export default App
+export default App;

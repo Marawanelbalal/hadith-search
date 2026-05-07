@@ -13,8 +13,8 @@ const AlgorithmCard = ({ algorithm, variant = 'default' }: AlgorithmCardProps) =
     <div className="flex flex-col relative">
       <div
         className={`${
-          isHighlighted ? 'bg-surface-container-lowest' : 'bg-surface-container-low'
-        } border-b border-outline-variant p-4 flex justify-between items-center shadow-sm`}
+          isHighlighted ? 'bg-surface-container-lowest dark:bg-dark-surface-container-lowest' : 'bg-surface-container-low dark:bg-dark-surface-container-low'
+        } border-b border-outline-variant dark:border-dark-outline-variant p-4 flex justify-between items-center shadow-sm`}
       >
         <div className="flex items-center gap-3">
           <div
@@ -24,23 +24,23 @@ const AlgorithmCard = ({ algorithm, variant = 'default' }: AlgorithmCardProps) =
           </div>
           <h3
             className={`font-h1-hadith text-lg ${
-              isHighlighted ? 'text-primary' : 'text-on-surface'
+              isHighlighted ? 'text-primary dark:text-dark-primary' : 'text-on-surface dark:text-dark-on-surface'
             }`}
           >
             {algorithm.algorithmName}
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-ui-caption text-ui-caption text-on-surface-variant">
+          <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
             {algorithm.results.length} results
           </span>
         </div>
       </div>
-      <div className={`p-4 space-y-4 ${isHighlighted ? 'bg-surface-container-lowest' : ''}`}>
+      <div className={`p-4 space-y-4 ${isHighlighted ? 'bg-surface-container-lowest dark:bg-dark-surface-container-lowest' : ''}`}>
         {algorithm.results.map((hadith) => (
           <div
             key={hadith.id}
-            className="group relative bg-surface border border-outline-variant rounded-lg p-5 hover:shadow-md transition-all duration-300"
+            className="group relative bg-surface dark:bg-dark-surface border border-outline-variant dark:border-dark-outline-variant rounded-lg p-5 hover:shadow-md transition-all duration-300"
           >
             <div className="mb-3 flex items-center gap-2">
               <span
@@ -48,15 +48,15 @@ const AlgorithmCard = ({ algorithm, variant = 'default' }: AlgorithmCardProps) =
               >
                 {gradeConfig[hadith.grade].label}
               </span>
-              <span className="font-ui-caption text-ui-caption text-on-surface-variant">
+              <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
                 {hadith.book}
               </span>
             </div>
-            <p className="font-body-main text-body-main text-on-surface mb-2">
+            <p className="font-body-main text-body-main text-on-surface dark:text-dark-on-surface mb-2">
               {hadith.englishText}
             </p>
             <p
-              className="font-body-arabic text-[20px] text-on-surface/70 text-right leading-[2]"
+              className="font-body-arabic text-[20px] text-on-surface/70 dark:text-dark-on-surface/70 text-right leading-[2]"
               dir="rtl"
             >
               {hadith.arabicText.substring(0, 100)}...

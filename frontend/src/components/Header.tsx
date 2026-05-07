@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { navItems } from '../data/fakeData';
+import { ThemeToggle } from './ThemeToggle';
 
 const Header = () => {
   const location = useLocation();
@@ -8,11 +9,11 @@ const Header = () => {
   if (isDark) return null;
 
   return (
-    <header className="bg-white dark:bg-stone-950 font-newsreader text-stone-900 dark:text-stone-100 sticky top-0 border-b border-stone-200 dark:border-stone-800 transition-all duration-200 ease-in-out z-50">
+    <header className="bg-surface dark:bg-dark-surface font-newsreader text-on-surface dark:text-dark-on-surface sticky top-0 border-b border-outline dark:border-dark-outline transition-all duration-200 ease-in-out z-50">
       <div className="flex justify-between items-center w-full px-6 py-4 max-w-[1200px] mx-auto">
         <Link
           to="/"
-          className="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-500 flex items-center gap-2 group"
+          className="text-2xl font-bold tracking-tight text-primary dark:text-dark-primary flex items-center gap-2 group"
         >
           <span className="material-symbols-outlined fill text-primary group-hover:rotate-90 transition-transform duration-500">
             star
@@ -28,13 +29,13 @@ const Header = () => {
                 to={item.path}
                 className={`relative flex items-center gap-1.5 py-2 px-3 rounded-lg transition-all duration-300 ${
                   isActive
-                    ? 'text-primary bg-primary/5 font-semibold'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-stone-50 dark:hover:bg-stone-900/50'
+                    ? 'text-primary dark:text-dark-primary bg-primary/5 dark:bg-dark-primary/5 font-semibold'
+                    : 'text-on-surface-variant dark:text-dark-on-surface-variant hover:text-primary dark:hover:text-dark-primary hover:bg-surface-container dark:hover:bg-dark-surface-container'
                 }`}
               >
                 <span
                   className={`material-symbols-outlined text-[18px] transition-all duration-300 ${
-                    isActive ? 'fill text-primary' : ''
+                    isActive ? 'fill text-primary dark:text-dark-primary' : ''
                   }`}
                 >
                   {item.icon}
@@ -48,9 +49,10 @@ const Header = () => {
           })}
         </nav>
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link
             to="/loading"
-            className="text-on-surface-variant hover:text-primary p-2 rounded-full transition-colors flex items-center justify-center hover:bg-stone-50"
+            className="text-on-surface-variant dark:text-dark-on-surface-variant hover:text-primary dark:hover:text-dark-primary p-2 rounded-full transition-colors flex items-center justify-center hover:bg-surface-container dark:hover:bg-dark-surface-container"
           >
             <span className="material-symbols-outlined">refresh</span>
           </Link>

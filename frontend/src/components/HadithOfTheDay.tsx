@@ -7,7 +7,7 @@ const HadithOfTheDay = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto animate-fade-in-up">
-      <div className="relative bg-primary-container text-on-primary-container rounded-2xl p-8 md:p-12 overflow-hidden islamic-frame">
+      <div className="relative bg-primary-container dark:bg-dark-primary-container text-on-primary-container dark:text-dark-on-primary-container rounded-2xl p-8 md:p-12 overflow-hidden islamic-frame">
         {/* Subtle girih pattern overlay */}
         <div className="absolute inset-0 girih-bg opacity-30 pointer-events-none" />
 
@@ -38,7 +38,7 @@ const HadithOfTheDay = () => {
 
           {/* Arabic text */}
           <p
-            className="font-body-arabic text-[32px] leading-[2.4] text-center text-on-primary-container max-w-3xl"
+            className="font-body-arabic text-[32px] leading-[2.4] text-center text-on-primary-container dark:text-dark-on-primary-container max-w-3xl"
             dir="rtl"
             style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
           >
@@ -53,7 +53,7 @@ const HadithOfTheDay = () => {
           </div>
 
           {/* English translation */}
-          <p className="font-body-main text-body-main text-on-primary-container/80 text-center max-w-2xl leading-relaxed">
+          <p className="font-body-main text-body-main text-on-primary-container/80 dark:text-dark-on-primary-container/80 text-center max-w-2xl leading-relaxed">
             {hadith.englishText}
           </p>
 
@@ -65,7 +65,7 @@ const HadithOfTheDay = () => {
             >
               {config.label}
             </span>
-            <span className="font-ui-caption text-ui-caption text-on-primary-container/60">
+            <span className="font-ui-caption text-ui-caption text-on-primary-container/60 dark:text-dark-on-primary-container/60">
               {hadith.book} • {hadith.narrator}
             </span>
           </div>

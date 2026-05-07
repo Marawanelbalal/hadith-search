@@ -18,10 +18,10 @@ const innerSizeMap = {
 const IslamicMotif = ({ size = 'md', className = '' }: IslamicMotifProps) => {
   return (
     <div
-      className={`${sizeMap[size]} bg-secondary-container rounded-sm rotate-45 flex items-center justify-center ${className}`}
+      className={`${sizeMap[size]} bg-secondary-container dark:bg-dark-secondary-container rounded-sm rotate-45 flex items-center justify-center ${className}`}
     >
       <div
-        className={`${innerSizeMap[size]} border border-on-secondary-container rotate-[-45deg] bg-background`}
+        className={`${innerSizeMap[size]} border border-on-secondary-container dark:border-dark-on-secondary-container rotate-[-45deg] bg-background dark:bg-dark-background`}
       />
     </div>
   );

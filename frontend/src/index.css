@@ -3,14 +3,44 @@
 @tailwind utilities;
 
 :root {
+  /* Light mode colors */
+  --color-background: #faf8f5;
+  --color-surface: #ffffff;
+  --color-surface-container: #f5f3f0;
+  --color-primary: #005129;
+  --color-primary-container: #1a6b3c;
+  --color-on-background: #1b1c1a;
+  --color-on-surface: #1b1c1a;
+  --color-on-surface-variant: #404940;
+  --color-outline: #707a70;
+  --color-outline-variant: #bfc9be;
+  --color-secondary: #745b00;
+  --color-secondary-container: #fdd977;
+  
   font-family: 'Newsreader', 'Manrope', 'Amiri', system-ui, sans-serif;
   line-height: 1.5;
   color: #1b1c1a;
-  background-color: #fbf9f6;
+  background-color: #faf8f5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  /* Dark mode colors */
+  --color-background: #0a1f12;
+  --color-surface: #0d2818;
+  --color-surface-container: #12331f;
+  --color-primary: #89d89e;
+  --color-primary-container: #1a6b3c;
+  --color-on-background: #e2e3df;
+  --color-on-surface: #e2e3df;
+  --color-on-surface-variant: #c0c9c0;
+  --color-outline: #8a938a;
+  --color-outline-variant: #404940;
+  --color-secondary: #e5c363;
+  --color-secondary-container: #584400;
 }
 
 html {

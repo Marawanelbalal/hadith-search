@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import { GradeMultiSelect } from '../components/GradeMultiSelect';
 import { BookMultiSelect } from '../components/BookMultiSelect';
 import HadithCard from '../components/HadithCard';
+import { ModeToggle } from '../components/ModeToggle';
 import { hadithCollection } from '../data/fakeData';
 import type { HadithGrade } from '../types';
 
-const ResultsPage = () => {
+// USER_MODE_ENDPOINT: Change this constant to swap the search algorithm used in User Mode
+// Options: 'bm25', 'bm25-prf', 'tf-idf', 'hybrid'
+const USER_MODE_ENDPOINT = 'bm25-prf';
+
+const UserModeResultsPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const query = searchParams.get('q') || 'prayer times';
   const gradeParams = searchParams.getAll('grade') as HadithGrade[];
   const bookParams = searchParams.getAll('book');
@@ -16,6 +22,7 @@ const ResultsPage = () => {
   const [selectedGrades, setSelectedGrades] = useState<HadithGrade[]>(gradeParams);
   const [selectedBooks, setSelectedBooks] = useState<string[]>(bookParams);
   const [sortBy, setSortBy] = useState<'relevance' | 'authenticity'>('relevance');
+  const [isDevMode, setIsDevMode] = useState(false);
 
   // Filter hadiths based on selections
   const filteredHadiths = hadithCollection.filter((h) => {
@@ -38,8 +45,26 @@ const ResultsPage = () => {
     console.log('Searching for:', newQuery);
   };
 
+  const handleModeToggle = () => {
+    setIsDevMode(!isDevMode);
+    navigate(isDevMode ? '/results' : '/results/dev');
+  };
+
   return (
     <main className="flex-grow w-full max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col gap-8 page-enter">
+      {/* Header with mode toggle */}
+      <div className="flex items-center justify-between">
+        <h1 className="font-display-lg text-display-lg text-on-background dark:text-dark-on-background">
+          Search Results
+        </h1>
+        <div className="flex items-center gap-4">
+          <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
+            Algorithm: {USER_MODE_ENDPOINT.toUpperCase()}
+          </span>
+          <ModeToggle isDevMode={isDevMode} onToggle={handleModeToggle} />
+        </div>
+      </div>
+
       {/* Search bar */}
       <div className="w-full max-w-2xl">
         <SearchBar onSearch={handleSearch} compact placeholder={`Refine search: "${query}"`} />
@@ -100,4 +125,4 @@ const ResultsPage = () => {
   );
 };
 
-export default ResultsPage;
+export default UserModeResultsPage;

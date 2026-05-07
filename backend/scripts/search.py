@@ -2,6 +2,7 @@ import pickle
 import os
 from scripts.preprocess import preprocess_arabic,preprocess_english,remove_stopwords_english
 import sqlite3
+import numpy as np
 import pandas as pd
 from math import log10
 
@@ -9,45 +10,39 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EN_II_DIR = os.path.join(BASE_DIR,"..","data","english_inverted_index.pkl")
 AR_II_DIR = os.path.join(BASE_DIR,"..","data","arabic_inverted_index.pkl")
 DOC_LEN_DIR = os.path.join(BASE_DIR,"..","data","document_lengths.pkl")
+AR_EMBEDDINGS_DIR = os.path.join(BASE_DIR,"..","data","arabic_embeddings.npy")
+EN_EMBEDDINGS_DIR = os.path.join(BASE_DIR,"..","data","english_embeddings.npy")
+HADITHS_IDS_DIR = os.path.join(BASE_DIR,"..","data","hadith_ids.npy")
 
 InvertedIndex = dict[str, list[tuple[int, int]]]
+from functools import lru_cache
 
-_arabic_inverted_index = None
-_english_inverted_index = None
-_document_lengths = None
-
+@lru_cache()
 def get_arabic_inverted_index():
-    global _arabic_inverted_index
-    if _arabic_inverted_index is None:
-        _arabic_inverted_index = load_arabic_inverted_index()
-    return _arabic_inverted_index
+    with open(AR_II_DIR, 'rb') as f:
+        return pickle.load(f)
 
+@lru_cache()
 def get_english_inverted_index():
-    global _english_inverted_index
-    if _english_inverted_index is None:
-        _english_inverted_index = load_english_inverted_index()
-    return _english_inverted_index
+    with open(EN_II_DIR, 'rb') as f:
+        return pickle.load(f)
 
+@lru_cache()
 def get_document_lengths():
-    global _document_lengths
-    if _document_lengths is None:
-        _document_lengths = load_document_lengths()
-    return _document_lengths
+    with open(DOC_LEN_DIR, 'rb') as f:
+        return pickle.load(f)
 
-def load_english_inverted_index() -> InvertedIndex:
-    with open(EN_II_DIR, 'rb') as file:
-        english_inverted_index = pickle.load(file)
-    return english_inverted_index
+@lru_cache()
+def get_arabic_embeddings():
+    return np.load(AR_EMBEDDINGS_DIR)
 
-def load_arabic_inverted_index() -> InvertedIndex:
-    with open(AR_II_DIR, 'rb') as file:
-        arabic_inverted_index = pickle.load(file)
-    return arabic_inverted_index    
+@lru_cache()
+def get_english_embeddings():
+    return np.load(EN_EMBEDDINGS_DIR)
 
-def load_document_lengths() -> dict[int, tuple[int, int]]:
-    with open(DOC_LEN_DIR, 'rb') as file:
-        document_lengths = pickle.load(file)
-    return document_lengths
+@lru_cache()
+def get_hadith_ids():
+    return np.load(HADITHS_IDS_DIR)
 
 def load_index_and_preprocess(query: str, language: str = "EN") -> tuple[InvertedIndex, str]:
     language = language.upper()
@@ -85,7 +80,7 @@ def tf_idf(query: str,language: str ="EN") -> dict[int,float]:
     inverted_index,query = load_index_and_preprocess(query,language)
     document_scores = {}
     term_query_frequency = {}
-    document_lengths = load_document_lengths()
+    document_lengths = get_document_lengths()
     query_terms = query.split()
     for term in query_terms:
         term_query_frequency[term] = term_query_frequency.get(term,0) + 1
@@ -109,7 +104,7 @@ from collections import Counter
 
 def query_expansion(query: str, top_hadiths: list[str], language: str = "EN", top_n: int = 3, alpha: float = 1.0, beta: float = 0.5) -> dict[str, float]:
     inverted_index, preprocessed_query = load_index_and_preprocess(query, language)
-    document_lengths = load_document_lengths()
+    document_lengths = get_document_lengths()
     total_docs = len(document_lengths)
     
     original_terms = preprocessed_query.split()
@@ -141,7 +136,7 @@ def query_expansion(query: str, top_hadiths: list[str], language: str = "EN", to
 def bm25(query: str, language: str = "EN", k1: float = 1.2, b: float = 0.75, custom_weights: dict = None) -> dict[int, float]:
     language = language.upper()
     inverted_index, preprocessed_query = load_index_and_preprocess(query, language)
-    document_lengths = load_document_lengths()
+    document_lengths = get_document_lengths()
     
     lang_idx = 0 if language == "AR" else 1
     lavg = sum(v[lang_idx] for v in document_lengths.values()) / len(document_lengths)
@@ -225,6 +220,72 @@ def hybrid_with_expansion(query: str, language: str = "EN", k: int = 5, top_n: i
         top_n=top_n
     )
     return bm25(query=query, language=language, custom_weights=custom_weights)
+
+def cosine_similarity_search(query_embedding: np.ndarray, corpus_embeddings: np.ndarray, top_k: int = 10) -> dict[int, float]:
+    query_norm = query_embedding / np.linalg.norm(query_embedding)
+    corpus_norm = corpus_embeddings / np.linalg.norm(corpus_embeddings, axis=1, keepdims=True)
+    
+    scores = corpus_norm @ query_norm
+    
+    top_k_indices = np.argsort(scores)[::-1][:top_k]
+    
+    return {int(top_k_indices[i]): float(scores[top_k_indices[i]]) for i in range(top_k)}
+
+def semantic_reranker(query: str, candidate_ids: list[int], model, embeddings: np.ndarray, hadith_ids: np.ndarray, top_k: int = 10) -> dict[int, float]:
+    query_embedding = model.encode([query])[0]
+    query_embedding = query_embedding / np.linalg.norm(query_embedding)
+    
+    scores = {}
+    for hadith_id in candidate_ids:
+        idx = np.where(hadith_ids == hadith_id)[0][0]
+        doc_embedding = embeddings[idx]
+        doc_embedding = doc_embedding / np.linalg.norm(doc_embedding)
+        scores[hadith_id] = float(np.dot(query_embedding, doc_embedding))
+    
+    return dict(sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k])
+
+def bm25_semantic_rerank(query: str, language: str, index, doc_lengths, embeddings, hadith_ids, model, candidate_k: int = 50, top_k: int = 10):
+    bm25_scores = bm25(query, language, index, doc_lengths)
+    candidate_ids = list(bm25_scores.keys())[:candidate_k]
+    
+    return semantic_reranker(query, candidate_ids, model, embeddings, hadith_ids, top_k)
+
+def cross_encoder_rerank(
+    query: str,
+    candidate_ids: list[int],
+    reranker,
+    hadith_texts: dict[int, str],
+    top_k: int = 10
+) -> dict[int, float]:
+    pairs = [[query, hadith_texts[hid]] for hid in candidate_ids if hid in hadith_texts]
+    scores = reranker.predict(pairs)
+    id_score_pairs = sorted(
+        zip(candidate_ids, scores),
+        key=lambda x: x[1],
+        reverse=True
+    )[:top_k]
+    return {int(hid): float(score) for hid, score in id_score_pairs}
+
+def bm25_cross_encoder_rerank(
+    query: str,
+    language: str,
+    index,
+    doc_lengths,
+    reranker,
+    hadiths_df,
+    candidate_k: int = 50,
+    top_k: int = 10
+) -> dict[int, float]:
+    bm25_scores = bm25(query, language, index, doc_lengths)
+    candidate_ids = list(bm25_scores.keys())[:candidate_k]
+    text_col = "English_Text" if language.upper() == "EN" else "Arabic_Text"
+    hadith_texts = {
+        hid: hadiths_df.loc[hid][text_col]
+        for hid in candidate_ids
+        if hid in hadiths_df.index
+    }
+    return cross_encoder_rerank(query, candidate_ids, reranker, hadith_texts, top_k)
+
 def get_hadith(hadith_id: int) -> dict:
     
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -245,11 +306,6 @@ def print_top_10_hadiths(hadith_dict : dict[int, float | int]) -> None:
         print(f"Score: {score}")
         print(f"English: {hadith['English_Text']}")
         print(f"Arabic: {hadith['Arabic_Text']}\n")
-
-# def query_expansion(query:str,top_hadiths:list[str],language="EN"): #top hadiths come in preprocessed
-#     original_terms = query.split()
-#     query_vector = {original_term:1 for original_term in original_terms}
-#     hadiths_string = " ".join(top_hadiths)        
 
 if __name__ == "__main__":
     query = input("Enter Query: ")

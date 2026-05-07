@@ -41,3 +41,5 @@ export interface NavItem {
   path: string;
   icon: string;
 }
+
+export type SearchAlgorithm = 'bm25' | 'bm25-prf' | 'tf-idf' | 'hybrid';

@@ -1,63 +1,36 @@
-import { gradeConfig } from '../data/fakeData';
-import type { HadithGrade } from '../types';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface GradeFilterProps {
-  selectedGrade: HadithGrade | 'all';
-  onGradeChange: (grade: HadithGrade | 'all') => void;
+  value: string | null;
+  onChange: (value: string | null) => void;
 }
 
-const gradeOrder: (HadithGrade | 'all')[] = ['all', 'sahih', 'hasan-sahih', 'hasan', 'daif-hasan', 'daif'];
+const grades = [
+  { value: null, labelKey: 'grades.all' },
+  { value: 'Sahih', labelKey: 'grades.sahih' },
+  { value: 'Hasan', labelKey: 'grades.hasan' },
+  { value: "Da'if (Weak)", labelKey: 'grades.daif' },
+];
 
-const GradeFilter = ({ selectedGrade, onGradeChange }: GradeFilterProps) => {
+const GradeFilter = ({ value, onChange }: GradeFilterProps) => {
+  const { t } = useLanguage();
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <span className="font-ui-caption text-ui-caption text-on-surface-variant uppercase tracking-wider mr-1">
-        Grade:
-      </span>
-      {gradeOrder.map((grade) => {
-        const isSelected = selectedGrade === grade;
-        const isAll = grade === 'all';
-
-        let bgClass = '';
-        let borderClass = '';
-        let shadowStyle: React.CSSProperties = {};
-
-        if (isAll) {
-          bgClass = isSelected
-            ? 'bg-primary text-on-primary shadow-sm'
-            : 'bg-surface-container-high text-on-surface';
-          borderClass = isSelected ? '' : 'border border-outline-variant';
-        } else {
-          const config = gradeConfig[grade];
-          if (isSelected) {
-            bgClass = `${config.bgClass} ${config.textClass} shadow-md`;
-            shadowStyle = { boxShadow: `0 4px 14px ${config.hex}40` };
-          } else {
-            bgClass = 'bg-surface-container-high text-on-surface';
-            borderClass = 'border border-outline-variant';
-          }
-        }
-
-        return (
-          <button
-            key={grade}
-            onClick={() => onGradeChange(grade)}
-            className={`px-4 py-2 rounded-full font-ui-label text-ui-label transition-all duration-300 ${bgClass} ${borderClass} ${
-              isSelected ? 'scale-105' : 'hover:scale-102'
-            } active:scale-95`}
-            style={shadowStyle}
-          >
-            <span className="flex items-center gap-1.5">
-              {isSelected && !isAll && (
-                <span className="material-symbols-outlined fill text-[14px] animate-fade-in">
-                  check
-                </span>
-              )}
-              {isAll ? 'All' : gradeConfig[grade].label}
-            </span>
-          </button>
-        );
-      })}
+    <div className="relative">
+      <label className="block font-ui-label text-ui-label mb-1 text-on-surface-variant dark:text-dark-on-surface-variant">
+        {t('filter.grade')}
+      </label>
+      <select
+        value={value ?? 'all'}
+        onChange={(e) => onChange(e.target.value === 'all' ? null : e.target.value)}
+        className="w-full sm:w-auto px-4 py-2.5 bg-surface dark:bg-dark-surface border border-outline dark:border-dark-outline rounded-lg text-on-surface dark:text-dark-on-surface font-ui-label text-ui-label focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary cursor-pointer"
+      >
+        {grades.map(({ value: v, labelKey }) => (
+          <option key={v ?? 'all'} value={v ?? 'all'}>
+            {t(labelKey)}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };

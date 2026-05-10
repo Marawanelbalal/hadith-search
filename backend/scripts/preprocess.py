@@ -1,30 +1,13 @@
 from nltk.tokenize import word_tokenize
 from nltk.corpus import wordnet
-from nltk.stem import WordNetLemmatizer
 from nltk import pos_tag
 from nltk.corpus import stopwords
 import pyarabic.araby as araby
 import re
-from camel_tools.disambig.mle import MLEDisambiguator
 from camel_tools.tokenizers.word import simple_word_tokenize
 from camel_tools.utils.dediac import dediac_ar
 from camel_tools.utils.normalize import normalize_alef_ar, normalize_alef_maksura_ar, normalize_teh_marbuta_ar
-
-_mle = None
-
-def get_mle():
-    global _mle
-    if _mle is None:
-        print("Loading CAMeL Tools MLE model...")
-        _mle = MLEDisambiguator.pretrained('calima-msa-r13')
-    return _mle
-_englishLemmatizer = None
-
-def get_english_lemmatizer():
-    global _englishLemmatizer
-    if _englishLemmatizer is None:
-        _englishLemmatizer = WordNetLemmatizer()
-    return _englishLemmatizer
+from scripts.loading import get_mle,get_english_lemmatizer
 
 def get_wordnet_pos(tag): #this is needed to convert nltk pos to wordnet pos
     if tag.startswith('J'):

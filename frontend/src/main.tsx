@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { LanguageProvider } from './i18n/LanguageProvider.tsx'
+import { ApiProvider } from './api/ApiContext.tsx'
 
 // Initialize theme
 const initializeTheme = () => {
@@ -19,6 +21,10 @@ initializeTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <LanguageProvider>
+      <ApiProvider>
+        <App />
+      </ApiProvider>
+    </LanguageProvider>
   </StrictMode>,
 )

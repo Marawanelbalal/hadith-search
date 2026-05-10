@@ -19,8 +19,8 @@
   
   font-family: 'Newsreader', 'Manrope', 'Amiri', system-ui, sans-serif;
   line-height: 1.5;
-  color: #1b1c1a;
-  background-color: #faf8f5;
+  color: var(--color-on-background);
+  background-color: var(--color-background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -41,6 +41,25 @@
   --color-outline-variant: #404940;
   --color-secondary: #e5c363;
   --color-secondary-container: #584400;
+}
+
+/* Smooth theme transition (150ms) */
+*,
+*::before,
+*::after {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* Exclude elements with their own animations from theme transition */
+.animate-fade-in-up,
+.animate-fade-in,
+.animate-scale-in,
+.animate-spin-slow,
+.animate-pulse-glow,
+.animate-slide-in-left,
+.shimmer,
+.page-enter {
+  transition: none;
 }
 
 html {
@@ -79,6 +98,10 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l2.5 17.5L40 20l-17.5 2.5L20 40l-2.5-17.5L0 20l17.5-2.5z' fill='%23e5c363' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
+.dark .girih-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l2.5 17.5L40 20l-17.5 2.5L20 40l-2.5-17.5L0 20l17.5-2.5z' fill='%2389d89e' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
 /* Islamic geometric pattern for Hadith of the Day */
 .islamic-frame {
   position: relative;
@@ -90,7 +113,7 @@ body {
   position: absolute;
   width: 24px;
   height: 24px;
-  border: 2px solid #e5c363;
+  border: 2px solid var(--color-secondary);
   transform: rotate(45deg);
   opacity: 0.6;
 }
@@ -107,8 +130,8 @@ body {
 
 /* Custom selection color */
 ::selection {
-  background-color: #1a6b3c;
-  color: #9ae9ae;
+  background-color: var(--color-primary-container);
+  color: var(--color-on-surface);
 }
 
 /* Smooth page transitions */
@@ -136,6 +159,24 @@ body {
   }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
 .shimmer {
   background: linear-gradient(
     90deg,
@@ -145,4 +186,38 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(137, 216, 158, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ─── RTL / Arabic Language Overrides ─────────────────────────── */
+html.rtl {
+  font-family: 'Amiri', 'Newsreader', 'Manrope', system-ui, sans-serif;
+}
+
+html.rtl .islamic-frame::before {
+  left: auto;
+  right: 12px;
+}
+
+html.rtl .islamic-frame::after {
+  right: auto;
+  left: 12px;
+}
+
+/* ─── Arabic text styling ─────────────────────────────────────── */
+.arabic-text {
+  font-family: 'Amiri', 'Noto Naskh Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 1.8;
 }

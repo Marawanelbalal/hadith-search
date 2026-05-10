@@ -1,29 +1,40 @@
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import Footer from './components/Footer';
-import Header from './components/Header';
-import BenchmarksPage from './pages/BenchmarksPage';
-import DevModePage from './pages/DevModePage';
-import DevModeResultsPage from './pages/DevModeResultsPage';
-import HomePage from './pages/HomePage';
-import LoadingPage from './pages/LoadingPage';
-import UserModeResultsPage from './pages/UserModeResultsPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './layouts/Layout';
+import UserHomePage from './pages/UserHomePage';
+import UserSearchPage from './pages/UserSearchPage';
+import DevHomePage from './pages/DevHomePage';
+import DevSearchPage from './pages/DevSearchPage';
+import DevBenchmarkPage from './pages/DevBenchmarkPage';
+import DevComparePage from './pages/DevComparePage';
+
+const getInitialMode = (): string => localStorage.getItem('app_mode') || 'user';
 
 const App = () => {
+  const mode = getInitialMode();
+  const defaultPath = mode === 'dev' ? '/dev/' : '/user/';
+
   return (
-    <MemoryRouter>
-      <div className="flex flex-col min-h-screen bg-background dark:bg-dark-background text-on-background dark:text-dark-on-background font-body-main text-body-main antialiased">
-        <Header />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/results" element={<UserModeResultsPage />} />
-          <Route path="/results/dev" element={<DevModeResultsPage />} />
-          <Route path="/dev" element={<DevModePage />} />
-          <Route path="/benchmarks" element={<BenchmarksPage />} />
-          <Route path="/loading" element={<LoadingPage />} />
-        </Routes>
-        <Footer />
-      </div>
-    </MemoryRouter>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to={defaultPath} replace />} />
+        <Route path="/user" element={<Navigate to="/user/" replace />} />
+        <Route path="/dev" element={<Navigate to="/dev/" replace />} />
+
+        <Route path="/user/" element={<Layout />}>
+          <Route index element={<UserHomePage />} />
+          <Route path="search" element={<UserSearchPage />} />
+        </Route>
+
+        <Route path="/dev/" element={<Layout />}>
+          <Route index element={<DevHomePage />} />
+          <Route path="search" element={<DevSearchPage />} />
+          <Route path="benchmark" element={<DevBenchmarkPage />} />
+          <Route path="compare" element={<DevComparePage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to={defaultPath} replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 

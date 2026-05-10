@@ -1,53 +1,83 @@
-import type { Hadith } from '../types';
-import { gradeConfig } from '../data/fakeData';
+import type { SearchResult, Lang } from '../types';
+import { GRADE_COLORS, BOOK_DISPLAY_NAMES } from '../constants';
 
 interface HadithCardProps {
-  hadith: Hadith;
+  result: SearchResult;
+  rank: number;
+  lang: Lang;
+  onClick: () => void;
 }
 
-const HadithCard = ({ hadith }: HadithCardProps) => {
-  const config = gradeConfig[hadith.grade];
+const HadithCard = ({ result, rank, lang, onClick }: HadithCardProps) => {
+  const { hadith, score } = result;
+  const gradeConfig = GRADE_COLORS[hadith.grade] ?? GRADE_COLORS['Unknown'];
+
+  const getBookDisplayName = () => {
+    const entry = BOOK_DISPLAY_NAMES[hadith.book];
+    if (entry) return lang === 'ar' ? entry.ar : entry.en;
+    return hadith.book;
+  };
 
   return (
-    <article className="bg-surface-container-lowest dark:bg-dark-surface-container-lowest border border-outline-variant dark:border-dark-outline-variant rounded-lg p-6 md:p-8 flex flex-col gap-6 hover:shadow-[0_4px_20px_rgba(0,81,41,0.08)] dark:hover:shadow-[0_4px_20px_rgba(137,216,158,0.15)] hover:border-primary-container dark:hover:border-dark-primary-container transition-all duration-300 group">
-      <div className="flex justify-between items-start border-b border-surface-variant dark:border-dark-surface-variant pb-4">
-        <div className="flex flex-col gap-1">
-          <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant uppercase tracking-widest">
-            {hadith.book}
+    <article
+      onClick={onClick}
+      className="bg-surface-container-lowest dark:bg-dark-surface-container-lowest border border-outline-variant dark:border-dark-outline-variant rounded-xl p-4 sm:p-5 md:p-6 flex flex-col gap-3 hover:shadow-lg hover:border-primary/30 dark:hover:border-dark-primary/30 cursor-pointer transition-all duration-300 group"
+    >
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="flex flex-col items-center gap-1 min-w-[40px] sm:min-w-[48px]">
+          <span className="text-2xl sm:text-3xl font-bold text-primary/50 dark:text-dark-primary/50 group-hover:text-primary dark:group-hover:text-dark-primary transition-colors">
+            {rank}
           </span>
-          <h2 className="font-h1-hadith text-h1-hadith text-on-surface dark:text-dark-on-surface group-hover:text-primary dark:group-hover:text-dark-primary transition-colors duration-300">
-            Book {hadith.bookNumber}, Hadith {hadith.hadithNumber}
-          </h2>
+          <span className="text-[10px] sm:text-xs font-ui-label text-on-surface-variant/50 dark:text-dark-on-surface-variant/50">
+            {score.toFixed(4)}
+          </span>
         </div>
-        <span
-          className={`${config.bgClass} ${config.textClass} font-ui-label text-ui-label px-3 py-1 rounded-full uppercase shadow-sm`}
-          style={{ boxShadow: `0 2px 8px ${config.hex}30` }}
-        >
-          {config.label}
-        </span>
-      </div>
-      <div className="flex flex-col gap-6">
-        <p
-          className="font-body-arabic text-body-arabic text-on-surface dark:text-dark-on-surface text-right leading-[2.2]"
-          dir="rtl"
-        >
-          {hadith.arabicText}
-        </p>
-        <div className="flex flex-col gap-2">
-          <p className="font-body-main text-body-main text-on-surface dark:text-dark-on-surface leading-relaxed">
-            {hadith.englishText}
-          </p>
-          <div className="flex items-center gap-2 pt-2">
-            <span className="material-symbols-outlined text-[16px] text-on-surface-variant dark:text-dark-on-surface-variant">person</span>
-            <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
-              {hadith.narrator}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span
+              className={`${gradeConfig.bg} ${gradeConfig.text} font-ui-label text-ui-caption px-2.5 py-0.5 rounded-full uppercase tracking-wide`}
+            >
+              {hadith.raw_grade}
             </span>
-            <span className="text-on-surface-variant/30 dark:text-dark-on-surface-variant/30 mx-1">•</span>
             <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
-              {hadith.topic}
+              {getBookDisplayName()}
+            </span>
+            <span className="text-on-surface-variant/30 dark:text-dark-on-surface-variant/30">•</span>
+            <span className="font-ui-caption text-ui-caption text-on-surface-variant dark:text-dark-on-surface-variant">
+              {hadith.reference}
             </span>
           </div>
+          <h3 className="font-h1-hadith text-sm sm:text-base text-on-surface dark:text-dark-on-surface group-hover:text-primary dark:group-hover:text-dark-primary transition-colors line-clamp-1">
+            {lang === 'ar' ? hadith.chapter_title_ar : hadith.chapter_title_en}
+          </h3>
+          {hadith.chapter_title_ar !== hadith.chapter_title_en && lang === 'ar' && (
+            <p className="font-h1-hadith text-xs text-on-surface-variant dark:text-dark-on-surface-variant text-right" dir="rtl">
+              {hadith.chapter_title_en}
+            </p>
+          )}
         </div>
+      </div>
+
+      <div className="h-px bg-outline-variant/40 dark:bg-dark-outline-variant/40" />
+
+      {lang === 'ar' ? (
+        <p
+          className="font-body-arabic text-xl sm:text-2xl text-on-surface dark:text-dark-on-surface text-right leading-[1.9]"
+          dir="rtl"
+        >
+          {hadith.hadith_ar_text}
+        </p>
+      ) : (
+        <p className="font-body-main text-xl sm:text-2xl text-on-surface dark:text-dark-on-surface leading-relaxed">
+          {hadith.hadith_en_text}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="material-symbols-outlined text-base text-primary/60 dark:text-dark-primary/60">bookmark</span>
+        <span className="font-ui-label text-ui-label px-3 py-1 bg-surface-container dark:bg-dark-surface-container border border-outline-variant dark:border-dark-outline-variant rounded-full text-on-surface-variant dark:text-dark-on-surface-variant">
+          {hadith.in_book_reference}
+        </span>
       </div>
     </article>
   );

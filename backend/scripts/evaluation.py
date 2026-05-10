@@ -1,4 +1,5 @@
 from math import log2
+import time
 import pandas as pd
 
 graded_relevant_list = dict[int : int]
@@ -146,32 +147,40 @@ def evaluate_query_at_k(retrieved : list[int],
         }
     ])
 
+
 def evaluate_system(
-    queries: list[str],
+    query_ids: list[str],
     retrieved_per_query: list[list[int]],
     relevant_per_query: list[graded_relevant_list],
-    k: int = 10
+    k: int = 10,
 ) -> pd.DataFrame:
-    relevant_set_per_query = [set(graded_list.keys()) for graded_list in relevant_per_query]
-    
+    """Compute per-query IR metrics and return a DataFrame with a MEAN row."""
     rows = []
-    for query, retrieved, relevant, relevant_set in zip(queries, retrieved_per_query, relevant_per_query, relevant_set_per_query):
-        retrieved_set = set(retrieved)
+    for qid, retrieved, relevant in zip(query_ids, retrieved_per_query, relevant_per_query):
+        relevant_set = set(relevant.keys())
         rows.append({
-            "query":        query,
-            "AP":           average_precision(retrieved, relevant_set),
-            "RR":           reciprocal_rank(retrieved, relevant_set),
-            f"P@{k}":       precision_at_k(retrieved, relevant_set, k),
-            f"R@{k}":       recall_at_k(retrieved, relevant_set, k),
-            f"F1@{k}":      f1_score_at_k(retrieved, relevant_set, k),
-            f"nDCG@{k}":    normalized_dcg_at_k(retrieved, relevant, k),
+            "query":     qid,
+            "AP":        average_precision(retrieved, relevant_set),
+            "RR":        reciprocal_rank(retrieved, relevant_set),
+            f"P@{k}":    precision_at_k(retrieved, relevant_set, k),
+            f"R@{k}":    recall_at_k(retrieved, relevant_set, k),
+            f"F1@{k}":   f1_score_at_k(retrieved, relevant_set, k),
+            f"nDCG@{k}": normalized_dcg_at_k(retrieved, relevant, k),
         })
     df = pd.DataFrame(rows).set_index("query")
     df.loc["MEAN"] = df.mean()
     return df
 
 
-
+def _filter_and_rank(
+    scores: dict[int, float], eval_ids: set[int]
+) -> list[tuple[int, float]]:
+    """Keep only eval-pool documents and return them sorted by descending score."""
+    return sorted(
+        ((doc_id, score) for doc_id, score in scores.items() if doc_id in eval_ids),
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
 
 
@@ -179,54 +188,239 @@ if __name__ == "__main__":
     import json
     import os
     import sqlite3
-    from scripts.search import ranked_boolean_retrieval, tf_idf, bm25, bm25_with_expansion, bm25_tfidf_hybrid, hybrid_with_expansion
-    
-    def get_filtered_ranked_ids(results: dict[int, float], eval_ids: set[int]) -> dict[int, float]:
-        filtered_dict = {doc_id: score for doc_id, score in results.items() if doc_id in eval_ids}
-        return [docid for docid, _ in sorted(filtered_dict.items(), key=lambda x: x[1], reverse=True)]
-    
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATA_DIR = os.path.join(BASE_DIR, "..", "data")
-    DB_PATH = os.path.join(DATA_DIR, "hadiths.db")
-    conn = sqlite3.connect(DB_PATH)
-    eval_ids = set(pd.read_sql("SELECT ID FROM evaluation_hadiths", conn)["id"])
-    conn.close()    
+    import numpy as np
+    from scripts.search import (
+        ranked_boolean_retrieval,
+        tf_idf, bm25, bm25_with_expansion, bm25_tfidf_hybrid, hybrid_with_expansion,
+        semantic_reranker, cross_encoder_rerank, semantic_search_e5, bm25_semantic_rrf,
+        get_hadith, final_search_pipeline
+    )
+    from scripts.loading import (
+        get_english_inverted_index, get_arabic_inverted_index,
+        get_document_lengths,
+        get_english_embeddings, get_arabic_embeddings,
+        get_hadith_ids,
+        get_model
+    )
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    QRELS_PATH = os.path.join(BASE_DIR, "qrels.json")
+
+    BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR   = os.path.join(BASE_DIR, "..", "data")
+    DB_PATH    = os.path.join(DATA_DIR, "hadiths.db")
+    QRELS_PATH = os.path.join(DATA_DIR, "qrels.json")
+    RESULTS_PATH = os.path.join(DATA_DIR, "qrels_results.json")
+
 
     with open(QRELS_PATH, encoding="utf-8") as f:
         qrels = json.load(f)
 
-
     query_ids     = list(qrels.keys())
     queries       = [v["query"] for v in qrels.values()]
     relevant_list = [
-        {int(k): v for k, v in entry["grades"].items()}  #JSON keys are strings by default so this casting is essential
+        {int(k): v for k, v in entry["grades"].items()}   # JSON keys are strings
         for entry in qrels.values()
     ]
-
     languages = ["AR" if qid.startswith("AR") else "EN" for qid in query_ids]
 
-    systems = {
-        "Boolean": lambda q, lang: get_filtered_ranked_ids(ranked_boolean_retrieval(q, lang), eval_ids),
-        "TF-IDF":  lambda q, lang: get_filtered_ranked_ids(tf_idf(q, lang), eval_ids),
-        "BM25":    lambda q, lang: get_filtered_ranked_ids(bm25(q, lang), eval_ids),
-        "BM25+ROCCHIO": lambda q,lang: get_filtered_ranked_ids(bm25_with_expansion(q, lang), eval_ids),
-        "BM25_TF_IDF": lambda q,lang: get_filtered_ranked_ids(bm25_tfidf_hybrid(q, lang), eval_ids),
-        "BM25_TF_IDF+ROCCHIO": lambda q,lang: get_filtered_ranked_ids(hybrid_with_expansion(q, lang), eval_ids),
+
+    with sqlite3.connect(DB_PATH) as conn:
+        eval_ids    = set(pd.read_sql("SELECT id FROM evaluation_hadiths", conn)["id"])
+        hadiths_df  = pd.read_sql("SELECT id, English_Text, Arabic_Text FROM hadiths", conn).set_index("id")
+
+    en_texts_dict = hadiths_df["English_Text"].to_dict()
+    ar_texts_dict = hadiths_df["Arabic_Text"].to_dict()
+
+    print("Loading indexes and models...")
+    en_index          = get_english_inverted_index()
+    ar_index          = get_arabic_inverted_index()
+    doc_lengths       = get_document_lengths()
+    en_embeddings     = get_english_embeddings()
+    ar_embeddings     = get_arabic_embeddings()
+    hadith_ids        = get_hadith_ids()
+    sentence_model = get_model()
+    eval_mask       = np.array([hid in eval_ids for hid in hadith_ids])
+    eval_hadith_ids = hadith_ids[eval_mask]
+    en_eval_embeddings = en_embeddings[eval_mask]
+    ar_eval_embeddings = ar_embeddings[eval_mask]
+
+    def simulated_2k_pipeline(
+        query: str, language: str, model_type: str
+    ) -> dict[int, float]:
+
+        index = en_index if language == "EN" else ar_index
+        bm25_scores = bm25(query, language, index, doc_lengths)
+
+        eval_pool = eval_ids  # assume set[int]
+
+        # Top BM25 candidates (already ranked properly)
+        candidates = [
+            doc_id for doc_id in sorted(
+                bm25_scores.keys(),
+                key=bm25_scores.get,
+                reverse=True
+            )
+            if doc_id in eval_pool
+        ][:50]
+        embeddings = en_eval_embeddings if language == "EN" else ar_eval_embeddings
+        model = sentence_model
+
+        if model_type == "bi-encoder":
+            return semantic_reranker(
+                query=query,
+                candidate_ids=candidates,
+                model=model,
+                embeddings=embeddings,
+                hadith_ids=eval_hadith_ids,
+                top_k=50
+            )
+
+        elif model_type == "rrf":
+
+            fused = bm25_semantic_rrf(
+                query=query,
+                language=language,
+                index=_index(language),
+                doc_lengths=doc_lengths,
+                corpus_embeddings_normed = embeddings,
+                hadith_ids=eval_hadith_ids,
+                model=model,
+            )
+
+            return dict(list(fused.items())[:20])
+
+        elif model_type == "cross-encoder":
+
+            texts = en_texts_dict if language == "EN" else ar_texts_dict
+            candidates = candidates[:100]  # top BM25 candidates
+            hadith_texts = {
+                hid: texts[hid]
+                for hid in candidates
+                if hid in texts
+            }
+
+            return cross_encoder_rerank(
+                query=query,
+                candidate_ids=candidates,
+                hadith_texts=hadith_texts,
+                top_k=20
+            )
+        else:
+            raise ValueError(f"Unknown model_type: {model_type}")
+
+    def _index(lang: str):
+        return en_index if lang == "EN" else ar_index
+    
+
+    print(f"hadith_ids:       {hadith_ids.shape}")
+    print(f"en_embeddings:    {en_embeddings.shape}")
+    print(f"ar_embeddings:    {ar_embeddings.shape}")
+    print(f"eval pool size:   {eval_mask.sum()}")
+
+    PIPELINES = {
+    "BM25": lambda q, lang: bm25(q, lang, _index(lang), doc_lengths),
+
+    "TF_IDF": lambda q, lang: tf_idf(q, lang, _index(lang), doc_lengths),
+
+    "BOOLEAN": lambda q, lang: ranked_boolean_retrieval(q, lang, _index(lang)),
+
+    "BM25_ROCCHIO": lambda q, lang: bm25_with_expansion(
+        q, lang, _index(lang), doc_lengths, get_hadith
+    ),
+
+    "BM25_TF_IDF": lambda q, lang: bm25_tfidf_hybrid(
+        q, lang, _index(lang), doc_lengths
+    ),
+
+    "BM25_TF_IDF_ROCCHIO": lambda q, lang: hybrid_with_expansion(
+        q, lang, _index(lang), doc_lengths, get_hadith
+    ),
     }
+    DENSE = {
+    "COSINE_SIMILARITY": lambda q, lang: semantic_search_e5(
+        query=q,
+        model=sentence_model,
+        corpus_embeddings_normed= en_eval_embeddings if lang == "EN" else ar_eval_embeddings,
+        hadith_ids=eval_hadith_ids,
+        top_k=20,
+    ),
+    }
+    HYBRIDS = {
+    "BM25_SEMANTIC_RERANK": lambda q, lang: simulated_2k_pipeline(
+        q, lang, "bi-encoder"
+    ),
+
+    "BM25_RRF": lambda q, lang: simulated_2k_pipeline(
+        q, lang, "rrf"
+    ),
+
+    "BM25_CROSS_ENCODER": lambda q, lang: simulated_2k_pipeline(
+        q, lang, "cross-encoder"
+    ),
+    "FINAL_PIPELINE": lambda q, lang: final_search_pipeline(
+    query=q,
+    language=lang,
+    index=_index(lang),
+    doc_lengths=doc_lengths,
+    embeddings=en_eval_embeddings if lang == "EN" else ar_eval_embeddings,
+    hadith_ids=eval_hadith_ids,
+    model=sentence_model,
+    eval_ids=eval_ids,
+    texts_dict=en_texts_dict if lang == "EN" else ar_texts_dict
+    )
+    }
+    SYSTEMS = {**PIPELINES,**DENSE,**HYBRIDS}
+
 
     k = 20
+    all_results: dict[str, dict] = {}
 
-    for system_name, search_fn in systems.items():
-        retrieved_per_query = [
-            search_fn(query, lang)
+    for system_name, search_fn in SYSTEMS.items():
+        print(f"\nEvaluating [{system_name}]...")
+        if system_name == "BM25_CROSS_ENCODER":
+            time.sleep(60) #avoid jina api free tier rate limits during testing
+        ranked_per_query: list[list[tuple[int, float]]] = [
+            _filter_and_rank(search_fn(query, lang), eval_ids)
             for query, lang in zip(queries, languages)
         ]
-        sample_retrieved = retrieved_per_query[0]
-        sample_relevant = relevant_list[0]
-        
-        df = evaluate_system(query_ids, retrieved_per_query, relevant_list, k)
-        print(f"\n{'='*20} {system_name} {'='*20}")
+
+        retrieved_ids = [[doc_id for doc_id, _ in ranked] for ranked in ranked_per_query]
+        df = evaluate_system(query_ids, retrieved_ids, relevant_list, k)
         print(df.to_string())
+
+        system_block = {}
+
+        for qid, query_text in zip(query_ids, queries):
+            row = df.loc[qid]
+
+            system_block[qid] = {
+                "Query Text": query_text,
+                "Metrics": {
+                    "AP": float(row["AP"]),
+                    "RR": float(row["RR"]),
+                    "P@20": float(row["P@20"]),
+                    "R@20": float(row["R@20"]),
+                    "F1@20": float(row["F1@20"]),
+                    f"nDCG@{k}": float(row[f"nDCG@{k}"]),
+                },
+            }
+        mean_row = df.loc["MEAN"]
+
+        system_block["MEAN"] = {
+            "Metrics": {
+                "AP": float(mean_row["AP"]),
+                "RR": float(mean_row["RR"]),
+                "P@20": float(mean_row["P@20"]),
+                "R@20": float(mean_row["R@20"]),
+                "F1@20": float(mean_row["F1@20"]),
+                f"nDCG@{k}": float(mean_row[f"nDCG@{k}"]),
+            }
+        }
+
+        all_results[system_name] = system_block
+        all_results[system_name] = system_block
+
+    with open(RESULTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, indent=2, ensure_ascii=False)
+    print(f"\nResults saved → {RESULTS_PATH}")
+
+

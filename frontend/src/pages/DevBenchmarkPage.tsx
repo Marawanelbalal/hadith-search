@@ -31,27 +31,12 @@ const DevBenchmarkPage = () => {
 
   useEffect(() => {
     Promise.all([getQrels(), getBenchmarks()]).then(([qrels, benchmarks]) => {
+      console.log(qrels)
+      console.log(benchmarks)
       setQrelData(qrels as { description: string; qrels: Record<string, { query: string; grades: Record<string, unknown> }> });
       setBenchmarkResults(benchmarks);
     });
   }, [getQrels, getBenchmarks]);
-
-  const computeMean = (algo: string): Metrics => {
-    const results = benchmarkResults?.[algo];
-    if (!results) return { AP: 0, RR: 0, 'P@20': 0, 'R@20': 0, 'F1@20': 0, 'nDCG@20': 0 };
-    const entries = Object.values(results).filter((r) => r.Metrics);
-    if (entries.length === 0) return { AP: 0, RR: 0, 'P@20': 0, 'R@20': 0, 'F1@20': 0, 'nDCG@20': 0 };
-    const sums: Metrics = { AP: 0, RR: 0, 'P@20': 0, 'R@20': 0, 'F1@20': 0, 'nDCG@20': 0 };
-    entries.forEach((entry) => {
-      METRIC_KEYS.forEach((key) => {
-        sums[key] += entry.Metrics[key] ?? 0;
-      });
-    });
-    return METRIC_KEYS.reduce((acc, key) => {
-      acc[key] = Number((sums[key] / entries.length).toFixed(4));
-      return acc;
-    }, {} as Metrics);
-  };
 
   return (
     <main className="flex-grow w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12 flex flex-col gap-12 lg:gap-16 page-enter">
@@ -95,16 +80,57 @@ const DevBenchmarkPage = () => {
               <h2 className="font-h1-hadith text-h1-hadith text-on-surface dark:text-dark-on-surface">Relevance Judgments (Qrels)</h2>
             </div>
             <div className="bg-surface-container-lowest dark:bg-dark-surface-container-lowest border border-outline-variant dark:border-dark-outline-variant rounded-xl p-5 sm:p-6">
-              {qrelData?.qrels && (
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto">
-                  {Object.entries(qrelData.qrels).map(([queryId, entry]) => (
-                    <div key={queryId} className="flex items-start gap-3 p-3 bg-surface dark:bg-dark-surface rounded-lg border border-outline-variant dark:border-dark-outline-variant">
-                      <span className="font-ui-label text-ui-label text-primary dark:text-dark-primary font-mono min-w-[60px] shrink-0">{queryId}</span>
-                      <span className="font-body-main text-body-main text-on-surface dark:text-dark-on-surface">{entry.query}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+{benchmarkResults?.BM25 && (
+  <div className="overflow-x-auto rounded-lg border border-outline-variant dark:border-dark-outline-variant">
+    <table className="w-full border-collapse text-sm">
+      <thead>
+        <tr className="bg-surface-container-low dark:bg-dark-surface-container-low border-b border-outline-variant dark:border-dark-outline-variant">
+          <th className="p-3 sm:p-4 text-start font-semibold text-on-surface dark:text-dark-on-surface min-w-[120px]">
+            Query ID
+          </th>
+          <th className="p-3 sm:p-4 text-start font-semibold text-on-surface dark:text-dark-on-surface">
+            Query text
+          </th>
+          <th className="p-3 sm:p-4 text-center font-semibold text-on-surface dark:text-dark-on-surface min-w-[80px]">
+            Language
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-outline-variant dark:divide-dark-outline-variant">
+        {Object.entries(benchmarkResults.BM25)
+          .filter(([queryId]) => queryId !== 'MEAN')
+          .map(([queryId, entry], idx) => {
+            const isArabic = queryId.startsWith('AR');
+            return (
+              <tr
+                key={queryId}
+                className="hover:bg-surface-container dark:hover:bg-dark-surface-container transition-colors duration-150"
+              >
+                <td className="p-3 sm:p-4 font-mono text-xs text-primary dark:text-dark-primary whitespace-nowrap">
+                  {queryId}
+                </td>
+                <td
+                  className="p-3 sm:p-4 text-on-surface dark:text-dark-on-surface"
+                  dir={isArabic ? 'rtl' : 'ltr'}
+                >
+                  {entry['Query Text']}
+                </td>
+                <td className="p-3 sm:p-4 text-center">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium
+                    ${isArabic
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    }`}>
+                    {isArabic ? 'Arabic' : 'English'}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+      </tbody>
+    </table>
+  </div>
+)}
             </div>
           </section>
 
@@ -146,18 +172,7 @@ const DevBenchmarkPage = () => {
                                 ))}
                               </tr>
                             ))}
-                            <tr className="bg-surface-container-low dark:bg-dark-surface-container-low border-t-2 border-primary/30 dark:border-dark-primary/30 font-bold">
-                              <td className="p-3 sm:p-4 text-primary dark:text-dark-primary font-mono" colSpan={2}>MEAN</td>
-                              {METRIC_KEYS.map((key) => {
-                                const sums = queryEntries.reduce((acc, [, data]) => acc + (data.Metrics[key] ?? 0), 0);
-                                const mean = queryEntries.length > 0 ? sums / queryEntries.length : 0;
-                                return (
-                                  <td key={key} className="p-3 sm:p-4 text-end text-primary dark:text-dark-primary">
-                                    {mean.toFixed(4)}
-                                  </td>
-                                );
-                              })}
-                            </tr>
+
                           </tbody>
                         </table>
                       </div>

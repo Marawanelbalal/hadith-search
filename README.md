@@ -73,6 +73,9 @@ nltk.download('averaged_perceptron_tagger_eng')
 ### HuggingFace Models (auto-downloaded)
 - `intfloat/multilingual-e5-large` - Sentence transformer for dense retrieval
 
+### CAMeL Tools Models (auto-downloaded)
+- `calima-msa-r13` - Arabic morphological disambiguator (loaded via `camel_tools.disambig.mle.MLEDisambiguator.pretrained("calima-msa-r13")`)
+
 ### External APIs
 - **Jina AI Reranker API** - Requires a Jina AI API key (not a downloaded model). Set via environment variable `JINA_API_KEY`
 

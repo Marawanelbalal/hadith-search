@@ -41,11 +41,18 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
     hadith: null,
   });
 
+  const searchControllerRef = useRef<AbortController | null>(null);
   const benchmarksControllerRef = useRef<AbortController | null>(null);
   const hadithControllerRef = useRef<AbortController | null>(null);
 
   const clearError = useCallback((operation: keyof ApiState['errors']) => {
     setErrors((prev) => ({ ...prev, [operation]: null }));
+  }, []);
+
+  const cancelSearch = useCallback(() => {
+    searchControllerRef.current?.abort();
+    searchControllerRef.current = null;
+    setLoading((prev) => ({ ...prev, search: false }));
   }, []);
 
   const cancelBenchmarks = useCallback(() => {
@@ -60,16 +67,27 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
     setLoading((prev) => ({ ...prev, hadith: false }));
   }, []);
 
-  const search = useCallback(async (algorithm: string, request: SearchRequest): Promise<SearchResponse> => {
+  const search = useCallback(async (algorithm: string, request: SearchRequest, externalSignal?: AbortSignal): Promise<SearchResponse> => {
+    if (searchControllerRef.current) {
+      searchControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    searchControllerRef.current = controller;
+
+    const signal = externalSignal ?? controller.signal;
+
     setLoading((prev) => ({ ...prev, search: true }));
     setErrors((prev) => ({ ...prev, search: null }));
 
     try {
-      const result = await searchHadiths(algorithm, request);
+      const result = await searchHadiths(algorithm, request, signal);
       setLoading((prev) => ({ ...prev, search: false }));
       return result;
     } catch (err) {
       setLoading((prev) => ({ ...prev, search: false }));
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { number_of_results: 0, results: [] };
+      }
       const message = err instanceof Error ? err.message : 'Search failed';
       setErrors((prev) => ({ ...prev, search: message }));
       return { number_of_results: 0, results: [] };
@@ -158,7 +176,7 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
     getBenchmarks,
     getQrels,
     getHadith,
-    cancelSearch: () => {},
+    cancelSearch,
     cancelBenchmarks,
     cancelHadith,
     clearError,

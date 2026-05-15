@@ -267,6 +267,7 @@ if __name__ == "__main__":
         if model_type == "bi-encoder":
             return semantic_reranker(
                 query=query,
+                language=language,
                 candidate_ids=candidates,
                 model=model,
                 embeddings=embeddings,
@@ -280,6 +281,7 @@ if __name__ == "__main__":
                 query=query,
                 language=language,
                 index=_index(language),
+                judged_ids=eval_ids,
                 doc_lengths=doc_lengths,
                 corpus_embeddings_normed = embeddings,
                 hadith_ids=eval_hadith_ids,
@@ -300,6 +302,7 @@ if __name__ == "__main__":
 
             return cross_encoder_rerank(
                 query=query,
+                language=language,
                 candidate_ids=candidates,
                 hadith_texts=hadith_texts,
                 top_k=20
@@ -338,6 +341,7 @@ if __name__ == "__main__":
     DENSE = {
     "COSINE_SIMILARITY": lambda q, lang: semantic_search_e5(
         query=q,
+        language=lang,
         model=sentence_model,
         corpus_embeddings_normed= en_eval_embeddings if lang == "EN" else ar_eval_embeddings,
         hadith_ids=eval_hadith_ids,

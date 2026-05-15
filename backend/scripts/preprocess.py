@@ -83,6 +83,11 @@ def normalize_token(token):
     token = araby.normalize_hamza(token, method="tasheel")
     return token
 
+def normalize_passage(passage):
+    tokens = passage.split()
+    tokens = [normalize_token(t) for t in tokens]
+    return " ".join(tokens)
+
 def process_arabic_tokens(disambiguated_tokens, original_tokens):
     extra_stopwords = get_stop_words_arabic()
     stop_pos = {'prep', 'conj', 'part', 'punc'}

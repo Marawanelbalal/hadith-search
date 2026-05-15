@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
-from scripts.preprocess import preprocess_arabic,preprocess_english
+from scripts.preprocess import preprocess_arabic,preprocess_english,normalize_arabic_text
+from camel_tools.utils.dediac import dediac_ar
 import sqlite3
 import numpy as np
 import pandas as pd
@@ -186,6 +187,7 @@ def cosine_similarity_search(
     }
 def semantic_search_e5(
     query: str,
+    language: str,
     model,
     corpus_embeddings_normed: np.ndarray,
     hadith_ids: np.ndarray,
@@ -194,7 +196,10 @@ def semantic_search_e5(
     """
     Dense semantic retrieval using E5-style query formatting.
     """
-    query_text = f"query: {query}"
+    if language == "EN":
+        query_text = query   # NO prefix
+    else:
+        query_text = f"query: {normalize_arabic_text(dediac_ar(query))}"
     query_embedding = model.encode([query_text])[0]
 
     return cosine_similarity_search(
@@ -204,8 +209,11 @@ def semantic_search_e5(
         top_k=top_k,
     )
 
-def semantic_reranker(query: str, candidate_ids: list[int], model, embeddings: np.ndarray, hadith_ids: np.ndarray, top_k: int = 50) -> dict[int, float]:
-    e5_query = f"query: {query}" if query.startswith("AR") else query
+def semantic_reranker(query: str, language : str, candidate_ids: list[int], model, embeddings: np.ndarray, hadith_ids: np.ndarray, top_k: int = 50) -> dict[int, float]:
+    if language == "EN":
+        e5_query = query   # NO prefix
+    else:
+        e5_query = f"query: {normalize_arabic_text(dediac_ar(query))}"
     query_embedding = model.encode([e5_query])[0]
     query_embedding = query_embedding / np.linalg.norm(query_embedding)
     scores = {}
@@ -265,6 +273,7 @@ def bm25_semantic_rrf(
     # Dense ranked list
     semantic_scores = semantic_search_e5(
         query=query,
+        language=language,
         model=model,
         corpus_embeddings_normed=corpus_embeddings_normed,
         hadith_ids=hadith_ids,
@@ -287,16 +296,18 @@ def bm25_semantic_rrf(
 import time
 def cross_encoder_rerank(
     query: str,
+    language: str,
     candidate_ids: list[int],
     hadith_texts: dict[int, str],
     top_k: int = 50
 ) -> dict[int, float]:
 
     valid_ids = [hid for hid in candidate_ids if hid in hadith_texts]
-
+    
     if not valid_ids:
         return {}
-
+    query = normalize_arabic_text(dediac_ar(query)) if language == "AR" else query
+    documents = [hadith_texts[hid] for hid in valid_ids]
     response = requests.post(
         "https://api.jina.ai/v1/rerank",
         headers={
@@ -304,9 +315,9 @@ def cross_encoder_rerank(
             "Content-Type": "application/json"
         },
         json={
-            "model": "jina-reranker-v2-base-multilingual",
+            "model": "jina-reranker-v3",
             "query": query,
-            "documents": [hadith_texts[hid] for hid in valid_ids],
+            "documents": documents,
             "top_n": top_k
         }
     )
@@ -338,7 +349,7 @@ def bm25_cross_encoder_rerank(
         if hid in hadiths_df.index
     }
 
-    return cross_encoder_rerank(query, candidate_ids, hadith_texts, top_k)
+    return cross_encoder_rerank(query,language, candidate_ids, hadith_texts, top_k)
 def final_search_pipeline(
     query: str,
     language: str,
@@ -360,8 +371,8 @@ def final_search_pipeline(
         hid for hid in sorted(bm25_scores, key=bm25_scores.get, reverse=True)
         if hid in eval_ids
     ][:candidate_k]
-
-    query_emb = model.encode([query if language == "EN" else f"query: {query}"])[0]
+    e5_query = f"query: {normalize_arabic_text(dediac_ar(query)) if language == "AR" else query}"
+    query_emb = model.encode([e5_query])[0]
     query_emb = query_emb / np.linalg.norm(query_emb)
 
     scores = embeddings @ query_emb
@@ -385,6 +396,7 @@ def final_search_pipeline(
 
     return cross_encoder_rerank(
         query=query,
+        language=language,
         candidate_ids=top_candidates,
         hadith_texts=hadith_texts,
         top_k=final_k

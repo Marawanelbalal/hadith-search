@@ -12,7 +12,7 @@ EN_II_PATH  = os.path.join(DATA_DIR, "english_inverted_index.pkl")
 AR_II_PATH  = os.path.join(DATA_DIR, "arabic_inverted_index.pkl")
 DOC_LEN_PATH = os.path.join(DATA_DIR, "document_lengths.pkl")
 EN_EMB_PATH  = os.path.join(DATA_DIR, "english_embeddings.npy")
-AR_EMB_PATH  = os.path.join(DATA_DIR, "arabic_embeddings.npy")
+AR_EMB_PATH  = os.path.join(DATA_DIR, "arabic_embeddings_p2.npy")
 HADITH_IDS_PATH = os.path.join(DATA_DIR, "hadith_ids.npy")
 
 CROSS_ENCODER_MODEL_ID = "jinaai/jina-reranker-v2-base-multilingual"

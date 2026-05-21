@@ -423,7 +423,6 @@ if __name__ == "__main__":
         }
 
         all_results[system_name] = system_block
-        all_results[system_name] = system_block
 
     with open(RESULTS_PATH, "w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=2, ensure_ascii=False)

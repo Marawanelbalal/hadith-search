@@ -31,8 +31,6 @@ const DevBenchmarkPage = () => {
 
   useEffect(() => {
     Promise.all([getQrels(), getBenchmarks()]).then(([qrels, benchmarks]) => {
-      console.log(qrels)
-      console.log(benchmarks)
       setQrelData(qrels as { description: string; qrels: Record<string, { query: string; grades: Record<string, unknown> }> });
       setBenchmarkResults(benchmarks);
     });

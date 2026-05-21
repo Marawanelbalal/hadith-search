@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../api/config';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Hadith {
   hadith_id: number;
   arabic_hadith: string;
   english_hadith: string;
+  book: string;
+  normalized_grade: string;
+  reference: string;
+  in_book_reference: string;
 }
 
 interface AnnotationState {
@@ -16,6 +21,18 @@ interface AnnotationState {
   pooled_hadiths: Hadith[];
   labels: Record<string, number>;
 }
+
+const GRADE_LABELS: Record<number, string> = {
+  0: 'Not Relevant',
+  1: 'Relevant',
+  2: 'Highly Relevant',
+};
+
+const GRADE_COLORS: Record<number, string> = {
+  0: 'text-red-600 dark:text-red-400',
+  1: 'text-yellow-600 dark:text-yellow-400',
+  2: 'text-green-600 dark:text-green-400',
+};
 
 const DevAnnotationSessionPage = () => {
   const { queryId } = useParams<{ queryId: string }>();
@@ -30,7 +47,7 @@ const DevAnnotationSessionPage = () => {
   const fetchState = useCallback(async () => {
     if (!queryId) return;
     try {
-      const response = await fetch(`http://localhost:8000/annotation/${queryId}/current`);
+      const response = await fetch(`${API_BASE_URL}/annotation/${queryId}/current`);
       if (!response.ok) throw new Error('Failed to fetch state');
       const data = await response.json();
       setState(data);
@@ -53,7 +70,7 @@ const DevAnnotationSessionPage = () => {
     setFlashGrade(label);
     setSaving(true);
     try {
-      await fetch(`http://localhost:8000/annotation/${queryId}/label`, {
+      await fetch(`${API_BASE_URL}/annotation/${queryId}/label`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -63,16 +80,14 @@ const DevAnnotationSessionPage = () => {
         })
       });
       lastSavedRef.current = Date.now();
-      
-      setTimeout(() => {
-        setFlashGrade(null);
-        setState(prev => prev ? {
-          ...prev,
-          labels: { ...prev.labels, [String(hadith.hadith_id)]: label },
-          current_index: index + 1
-        } : null);
-        setSaving(false);
-      }, 200);
+
+      setFlashGrade(null);
+      setState(prev => prev ? {
+        ...prev,
+        labels: { ...prev.labels, [String(hadith.hadith_id)]: label },
+        current_index: index + 1
+      } : null);
+      setSaving(false);
     } catch (err) {
       console.error('Failed to save label:', err);
       setFlashGrade(null);
@@ -85,7 +100,7 @@ const DevAnnotationSessionPage = () => {
     if (index < 0 || index >= state.total) return;
 
     try {
-      await fetch(`http://localhost:8000/annotation/${queryId}/navigate?index=${index}`, {
+      await fetch(`${API_BASE_URL}/annotation/${queryId}/navigate?index=${index}`, {
         method: 'POST'
       });
       setState(prev => prev ? { ...prev, current_index: index } : null);
@@ -115,7 +130,12 @@ const DevAnnotationSessionPage = () => {
 
   const currentHadith = state.pooled_hadiths[state.current_index];
   const currentLabel = currentHadith ? state.labels[String(currentHadith.hadith_id)] : null;
-  
+
+  const gradeCounts = [0, 1, 2].map(g => ({
+    grade: g,
+    count: Object.values(state.labels).filter(l => l === g).length,
+  }));
+
   return (
     <main className="flex-grow w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 page-enter">
       <div className="flex items-center justify-between">
@@ -148,6 +168,16 @@ const DevAnnotationSessionPage = () => {
         />
       </div>
 
+      {Object.keys(state.labels).length > 0 && (
+        <div className="flex items-center justify-center gap-6 text-sm">
+          {gradeCounts.map(({ grade, count }) => (
+            <span key={grade} className={GRADE_COLORS[grade]}>
+              {GRADE_LABELS[grade]}: {count}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="bg-surface dark:bg-dark-surface border border-outline dark:border-dark-outline rounded-lg p-6">
         <div className="mb-4">
           <span className="text-sm text-on-surface-variant dark:text-dark-on-surface-variant">
@@ -165,6 +195,13 @@ const DevAnnotationSessionPage = () => {
                 <div className="text-sm font-medium text-on-surface-variant dark:text-dark-on-surface-variant mb-2">
                   Arabic (ID: {currentHadith.hadith_id})
                 </div>
+                {currentHadith.book && (
+                  <div className="text-xs text-on-surface-variant dark:text-dark-on-surface-variant mb-2">
+                    {currentHadith.book}
+                    {currentHadith.normalized_grade ? ` • ${currentHadith.normalized_grade}` : ''}
+                    {currentHadith.reference ? ` • ${currentHadith.reference}` : ''}
+                  </div>
+                )}
                 <div
                   className="p-4 bg-surface-variant dark:bg-dark-surface-variant rounded-lg"
                   style={{ direction: 'rtl', textAlign: 'right', fontFamily: 'Amiri, "Noto Naskh Arabic", serif' }}
@@ -195,12 +232,8 @@ const DevAnnotationSessionPage = () => {
                 <span className="text-on-surface-variant dark:text-dark-on-surface-variant">
                   Current grade:{' '}
                 </span>
-                <span className={`font-medium ${
-                  currentLabel === 2 ? 'text-green-600 dark:text-green-400' :
-                  currentLabel === 1 ? 'text-yellow-600 dark:text-yellow-400' :
-                  'text-red-600 dark:text-red-400'
-                }`}>
-                  {currentLabel === 2 ? 'Highly Relevant' : currentLabel === 1 ? 'Relevant' : 'Not Relevant'}
+                <span className={`font-medium ${GRADE_COLORS[currentLabel]}`}>
+                  {GRADE_LABELS[currentLabel]}
                 </span>
               </div>
             )}

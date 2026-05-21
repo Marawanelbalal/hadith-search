@@ -63,14 +63,6 @@ export const BOOK_SLUGS = [
   'sunan-ibn-majah',
 ] as const;
 
-export const GRADE_COLORS: Record<string, { bg: string; text: string; hex: string }> = {
-  'Sahih':              { bg: 'bg-grade-sahih', text: 'text-white', hex: '#16a34a' },
-  'Hasan':              { bg: 'bg-grade-hasan', text: 'text-white', hex: '#2563eb' },
-  "Da'if (Weak)":       { bg: 'bg-grade-daif', text: 'text-white', hex: '#d97706' },
-  'Maudu (Fabricated)': { bg: 'bg-grade-fabricated', text: 'text-white', hex: '#dc2626' },
-  'Unknown':            { bg: 'bg-grade-unknown', text: 'text-white', hex: '#6b7280' },
-};
-
 export type Algorithm =
   | 'boolean'
   | 'tfidf'

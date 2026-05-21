@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../api/config';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 interface QueryInfo {
@@ -19,7 +20,7 @@ const DevAnnotationPage = () => {
   useEffect(() => {
     const fetchQueries = async () => {
       try {
-        const response = await fetch('http://localhost:8000/annotation/queries');
+        const response = await fetch(`${API_BASE_URL}/annotation/queries`);
         if (!response.ok) throw new Error('Failed to fetch queries');
         const data = await response.json();
         setQueries(data.queries);

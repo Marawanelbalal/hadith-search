@@ -20,17 +20,28 @@ def get_hadith_texts(hadith_ids: list[int]) -> dict[int, dict]:
     cursor = conn.cursor()
     results = {}
     for hid in hadith_ids:
-        cursor.execute("SELECT Arabic_Text, English_Text FROM hadiths WHERE id = ?", (hid,))
+        cursor.execute(
+            "SELECT Arabic_Text, English_Text, Book, Normalized_Grade, Reference, \"In-book reference\" FROM hadiths WHERE id = ?",
+            (hid,),
+        )
         row = cursor.fetchone()
         if row:
             results[hid] = {
                 "arabic_hadith": row[0] or "",
-                "english_hadith": row[1] or ""
+                "english_hadith": row[1] or "",
+                "book": row[2] or "",
+                "normalized_grade": row[3] or "",
+                "reference": row[4] or "",
+                "in_book_reference": row[5] or "",
             }
         else:
             results[hid] = {
                 "arabic_hadith": "",
-                "english_hadith": ""
+                "english_hadith": "",
+                "book": "",
+                "normalized_grade": "",
+                "reference": "",
+                "in_book_reference": "",
             }
     conn.close()
     return results

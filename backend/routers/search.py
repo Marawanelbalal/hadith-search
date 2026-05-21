@@ -13,7 +13,7 @@ from scripts.loading import (
     get_model,
 )
 from scripts.search import (
-    ranked_boolean_retrieval,
+    ranked_term_overlap,
     tf_idf,
     bm25,
     bm25_tfidf_hybrid,
@@ -66,8 +66,8 @@ def build_results(
     return output[:top_k]
 
 
-@router.post("/search/boolean", response_model=SearchResponse)
-def boolean_search(
+@router.post("/search/term-overlap", response_model=SearchResponse)
+def term_overlap_search(
     req: SearchRequest,
     english_inverted_index=Depends(get_english_inverted_index),
     arabic_inverted_index=Depends(get_arabic_inverted_index),
@@ -75,7 +75,7 @@ def boolean_search(
 ):
     t0 = time.perf_counter()
     idx = english_inverted_index if req.lang.value == "en" else arabic_inverted_index
-    raw = ranked_boolean_retrieval(req.query, req.lang.value.upper(), idx)
+    raw = ranked_term_overlap(req.query, req.lang.value.upper(), idx)
     results = build_results(raw, hadiths_df, req.grade_filter, req.book_filter)
     elapsed = (time.perf_counter() - t0) * 1000
     return SearchResponse(number_of_results=len(results), results=results, response_time_ms=round(elapsed, 2))

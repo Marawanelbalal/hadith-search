@@ -15,9 +15,6 @@ EN_EMB_PATH  = os.path.join(DATA_DIR, "english_embeddings.npy")
 AR_EMB_PATH  = os.path.join(DATA_DIR, "arabic_embeddings_p2.npy")
 HADITH_IDS_PATH = os.path.join(DATA_DIR, "hadith_ids.npy")
 
-CROSS_ENCODER_MODEL_ID = "jinaai/jina-reranker-v2-base-multilingual"
-
-
 @lru_cache()
 def get_english_inverted_index():
     with open(EN_II_PATH, "rb") as f:
@@ -71,11 +68,3 @@ def get_english_lemmatizer():
 def get_model():
     from sentence_transformers import SentenceTransformer
     return SentenceTransformer("intfloat/multilingual-e5-large")
-
-@lru_cache()
-def get_cross_encoder_reranker():
-    tokenizer = AutoTokenizer.from_pretrained(CROSS_ENCODER_MODEL_ID)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        CROSS_ENCODER_MODEL_ID, trust_remote_code=True
-    )
-    return (tokenizer, model)

@@ -84,7 +84,7 @@ export type Algorithm =
   | 'cross-encoder-rerank';
 
 export const ALGORITHMS: { value: Algorithm; label: string; endpoint: string }[] = [
-  { value: 'boolean', label: 'Boolean', endpoint: 'boolean' },
+  { value: 'term-overlap', label: 'Term Overlap', endpoint: 'term-overlap' },
   { value: 'tfidf', label: 'TF-IDF', endpoint: 'tfidf' },
   { value: 'bm25', label: 'BM25', endpoint: 'bm25' },
   { value: 'bm25-tf-idf', label: 'BM25 + TF-IDF (Hybrid)', endpoint: 'bm25-tf-idf' },

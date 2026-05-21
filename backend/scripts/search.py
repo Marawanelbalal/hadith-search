@@ -9,13 +9,12 @@ from math import log10
 from scripts.loading import get_english_inverted_index, get_arabic_inverted_index, get_document_lengths, get_hadith_ids, get_hadiths_df
 import requests
 from collections import Counter
-
 InvertedIndex = dict[str, list[tuple[int, int]]]
 
 load_dotenv()
-JINA_API_KEY = os.getenv("JINA_API_KEY")
+JINA_API_KEY = os.getenv("JINA_API_KEY2")
 
-def ranked_boolean_retrieval(query: str, language: str, inverted_index) -> dict[int, int]:
+def ranked_term_overlap(query: str, language: str, inverted_index) -> dict[int, int]:
     query = preprocess_arabic(query) if language == "AR" else preprocess_english(query)
     query_terms = query.split()
     valid_hadiths = {}
@@ -299,30 +298,30 @@ def cross_encoder_rerank(
     language: str,
     candidate_ids: list[int],
     hadith_texts: dict[int, str],
-    top_k: int = 50
+    top_k: int = 100
 ) -> dict[int, float]:
-
     valid_ids = [hid for hid in candidate_ids if hid in hadith_texts]
-    
     if not valid_ids:
         return {}
     query = normalize_arabic_text(dediac_ar(query)) if language == "AR" else query
     documents = [hadith_texts[hid] for hid in valid_ids]
     response = requests.post(
-        "https://api.jina.ai/v1/rerank",
-        headers={
-            "Authorization": f"Bearer {JINA_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "jina-reranker-v3",
-            "query": query,
-            "documents": documents,
-            "top_n": top_k
-        }
+    "https://api.jina.ai/v1/rerank",
+    headers={
+        "Authorization": f"Bearer {JINA_API_KEY}",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "jina-reranker-v3",
+        "query": query,
+        "documents": documents,
+        "top_n": top_k,
+        "return_documents": False
+    }
     )
-    time.sleep(20) #avoid hitting Jina API rate limits during testing
+    print(response.status_code)
     results = response.json()["results"]
+    time.sleep(60)
     return {
         valid_ids[r["index"]]: float(r["relevance_score"])
         for r in results
@@ -335,8 +334,8 @@ def bm25_cross_encoder_rerank(
     index,
     doc_lengths,
     hadiths_df,
-    candidate_k: int = 50,
-    top_k: int = 10
+    candidate_k: int = 100,
+    top_k: int = 100
 ) -> dict[int, float]:
 
     bm25_scores = bm25(query, language, index, doc_lengths)
@@ -348,7 +347,6 @@ def bm25_cross_encoder_rerank(
         for hid in candidate_ids
         if hid in hadiths_df.index
     }
-
     return cross_encoder_rerank(query,language, candidate_ids, hadith_texts, top_k)
 def final_search_pipeline(
     query: str,
@@ -360,9 +358,9 @@ def final_search_pipeline(
     model,
     eval_ids: set[int],
     texts_dict: dict[int, str],
-    candidate_k: int = 500,
-    rerank_k: int = 30,
-    final_k: int = 30,
+    candidate_k: int = 1000,
+    rerank_k: int = 100,
+    final_k: int = 100,
 ) -> dict[int, float]:
 
     bm25_scores = bm25(query, language, index, doc_lengths)

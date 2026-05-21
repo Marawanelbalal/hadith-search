@@ -7,7 +7,7 @@ router = APIRouter(prefix="/benchmark", tags=["benchmark"])
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")
-QRELS_PATH = os.path.join(DATA_DIR, "qrels.json")
+QUERIES_PATH = os.path.join(DATA_DIR, "queries.json")
 QRELS_RESULTS_PATH = os.path.join(DATA_DIR, "qrels_results.json")
 
 
@@ -23,21 +23,13 @@ def benchmark_results():
 
 @router.get("/qrels")
 def benchmark_qrels(hadiths_df=Depends(get_hadiths_df)):
-    qrels = load_json(QRELS_PATH)
+    queries_data = load_json(QUERIES_PATH)
 
     enhanced = {}
-    for qid, entry in qrels.items():
+    for qid, query_text in queries_data.items():
         enhanced[qid] = {
-            "query": entry["query"],
-            "grades": {
-                hid: {
-                    "grade": grade,
-                    "hadith": hadiths_df.loc[int(hid)].to_dict()
-                    if int(hid) in hadiths_df.index
-                    else {"error": "not found"},
-                }
-                for hid, grade in entry["grades"].items()
-            },
+            "query": query_text,
+            "grades": {}
         }
 
     return {

@@ -21,6 +21,7 @@ const Navbar = () => {
         { labelKey: 'nav.search', path: '/dev/search', icon: 'search' },
         { labelKey: 'nav.benchmarks', path: '/dev/benchmark', icon: 'analytics' },
         { labelKey: 'nav.algorithmComparison', path: '/dev/compare', icon: 'compare_arrows' },
+        { labelKey: 'nav.annotation', path: '/dev/annotation', icon: 'edit_note' },
       ]
     : [{ labelKey: 'nav.search', path: '/user/search', icon: 'search' }];
 

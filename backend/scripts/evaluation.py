@@ -190,7 +190,7 @@ if __name__ == "__main__":
     import sqlite3
     import numpy as np
     from scripts.search import (
-        ranked_boolean_retrieval,
+        ranked_term_overlap,
         tf_idf, bm25, bm25_with_expansion, bm25_tfidf_hybrid, hybrid_with_expansion,
         semantic_reranker, cross_encoder_rerank, semantic_search_e5, bm25_semantic_rrf,
         get_hadith, final_search_pipeline
@@ -207,18 +207,21 @@ if __name__ == "__main__":
     BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR   = os.path.join(BASE_DIR, "..", "data")
     DB_PATH    = os.path.join(DATA_DIR, "hadiths.db")
-    QRELS_PATH = os.path.join(DATA_DIR, "qrels.json")
+    QUERIES_PATH = os.path.join(DATA_DIR, "queries.json")
+    QRELS_GRADED_PATH = os.path.join(DATA_DIR, "qrels_graded.json")
     RESULTS_PATH = os.path.join(DATA_DIR, "qrels_results.json")
 
+    with open(QUERIES_PATH, encoding="utf-8") as f:
+        queries_data = json.load(f)
 
-    with open(QRELS_PATH, encoding="utf-8") as f:
-        qrels = json.load(f)
+    with open(QRELS_GRADED_PATH, encoding="utf-8") as f:
+        qrels_graded = json.load(f)
 
-    query_ids     = list(qrels.keys())
-    queries       = [v["query"] for v in qrels.values()]
+    query_ids     = list(queries_data.keys())
+    queries       = list(queries_data.values())
     relevant_list = [
-        {int(k): v for k, v in entry["grades"].items()}   # JSON keys are strings
-        for entry in qrels.values()
+        {int(k): v for k, v in qrels_graded.get(qid, {}).get("grades", {}).items()}
+        for qid in query_ids
     ]
     languages = ["AR" if qid.startswith("AR") else "EN" for qid in query_ids]
 
@@ -253,6 +256,7 @@ if __name__ == "__main__":
         eval_pool = eval_ids  # assume set[int]
 
         # Top BM25 candidates (already ranked properly)
+        print(f"Candidates Before: {len(bm25_scores)}")
         candidates = [
             doc_id for doc_id in sorted(
                 bm25_scores.keys(),
@@ -260,7 +264,8 @@ if __name__ == "__main__":
                 reverse=True
             )
             if doc_id in eval_pool
-        ][:50]
+        ]
+        print(f"Candidates After: {len(candidates)}")
         embeddings = en_eval_embeddings if language == "EN" else ar_eval_embeddings
         model = sentence_model
 
@@ -268,11 +273,11 @@ if __name__ == "__main__":
             return semantic_reranker(
                 query=query,
                 language=language,
-                candidate_ids=candidates,
+                candidate_ids=candidates[:500],
                 model=model,
                 embeddings=embeddings,
                 hadith_ids=eval_hadith_ids,
-                top_k=50
+                top_k=500
             )
 
         elif model_type == "rrf":
@@ -288,24 +293,21 @@ if __name__ == "__main__":
                 model=model,
             )
 
-            return dict(list(fused.items())[:20])
+            return dict(list(fused.items()))
 
         elif model_type == "cross-encoder":
-
+            candidates = candidates[:100]
             texts = en_texts_dict if language == "EN" else ar_texts_dict
-            candidates = candidates[:100]  # top BM25 candidates
             hadith_texts = {
                 hid: texts[hid]
                 for hid in candidates
                 if hid in texts
             }
-
             return cross_encoder_rerank(
                 query=query,
                 language=language,
                 candidate_ids=candidates,
-                hadith_texts=hadith_texts,
-                top_k=20
+                hadith_texts=hadith_texts
             )
         else:
             raise ValueError(f"Unknown model_type: {model_type}")
@@ -324,7 +326,7 @@ if __name__ == "__main__":
 
     "TF_IDF": lambda q, lang: tf_idf(q, lang, _index(lang), doc_lengths),
 
-    "BOOLEAN": lambda q, lang: ranked_boolean_retrieval(q, lang, _index(lang)),
+    "Term Overlap": lambda q, lang: ranked_term_overlap(q, lang, _index(lang)),
 
     "BM25_ROCCHIO": lambda q, lang: bm25_with_expansion(
         q, lang, _index(lang), doc_lengths, get_hadith

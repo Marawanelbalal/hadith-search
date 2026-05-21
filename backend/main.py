@@ -66,9 +66,11 @@ app.add_middleware(
 
 from routers.search import router as search_router
 from routers.benchmark import router as benchmark_router
+from routers.annotation import router as annotation_router
 
 app.include_router(search_router)
 app.include_router(benchmark_router)
+app.include_router(annotation_router)
 
 @app.get("/hadith/{hadith_id}")
 def get_hadith(hadith_id: int):

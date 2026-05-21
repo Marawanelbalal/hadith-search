@@ -12,7 +12,7 @@ const BENCHMARK_DESCRIPTION = "This benchmark evaluates 10 retrieval algorithms 
 const ALGO_LABELS: Record<string, string> = {
   'BM25': 'BM25',
   'TF-IDF': 'TF-IDF',
-  'Boolean': 'Boolean',
+  'Term Overlap': 'Term Overlap',
   'BM25 + Rocchio (PRF)': 'BM25 + Rocchio (PRF)',
   'BM25 + TF-IDF (Hybrid)': 'BM25 + TF-IDF (Hybrid)',
   'BM25 + TF-IDF + Rocchio': 'BM25 + TF-IDF + Rocchio',

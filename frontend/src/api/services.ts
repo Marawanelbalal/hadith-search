@@ -59,3 +59,51 @@ export const getHadithById = async (id: number, signal?: AbortSignal) => {
 
   return response.json();
 };
+
+export const getAnnotationQueries = async (signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/annotation/queries`, { signal });
+
+  if (!response.ok) {
+    throw new ApiError(`Annotation queries fetch failed: ${response.status}`, response.status);
+  }
+
+  return response.json();
+};
+
+export const getAnnotationCurrent = async (queryId: string, signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/annotation/${queryId}/current`, { signal });
+
+  if (!response.ok) {
+    throw new ApiError(`Annotation current fetch failed: ${response.status}`, response.status);
+  }
+
+  return response.json();
+};
+
+export const saveAnnotationLabel = async (queryId: string, payload: { hadith_id: number; index: number; label: number }, signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/annotation/${queryId}/label`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`Annotation label save failed: ${response.status}`, response.status);
+  }
+
+  return response.json();
+};
+
+export const navigateAnnotation = async (queryId: string, index: number, signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/annotation/${queryId}/navigate?index=${index}`, {
+    method: 'POST',
+    signal
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`Annotation navigate failed: ${response.status}`, response.status);
+  }
+
+  return response.json();
+};

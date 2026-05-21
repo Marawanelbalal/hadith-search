@@ -39,7 +39,7 @@ Dense retrieval uses transformer-based embeddings:
 
 | Algorithm | Description |
 |-----------|-------------|
-| **Boolean** | Exact matches ranked by term frequency |
+| **Term Overlap** | Exact matches ranked by term frequency |
 | **TF-IDF** | Classic term frequency-inverse document frequency ranking |
 | **BM25** | Okapi BM25 with optimized k1 and b parameters |
 | **BM25 + TF-IDF (Hybrid)** | Combines BM25 and TF-IDF scores with weighted fusion |
@@ -51,7 +51,7 @@ Dense retrieval uses transformer-based embeddings:
 | **Final Pipeline** | Full pipeline: BM25 → Semantic Reranking → Cross Encoding |
 
 ### Search Architecture
-- **Sparse Retrieval**: BM25, TF-IDF, Boolean - Fast, interpretable, language-independent
+- **Sparse Retrieval**: BM25, TF-IDF, Term Overlap - Fast, interpretable, language-independent
 - **Dense Retrieval**: Cosine Similarity using multilingual-e5-large embeddings
 - **Reranking**: jinaai/jina-reranker-v2-base-multilingual for precision improvement
 - **Fusion**: Reciprocal Rank Fusion (RRF) for combining multiple retrieval methods

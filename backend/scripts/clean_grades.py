@@ -134,7 +134,7 @@ def normalize_grades(conn):
         print(f"{count:6d} | {grade}")
 
 
-def main():
+def run():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA journal_mode=WAL;")
 
@@ -147,4 +147,4 @@ def main():
     conn.close()
 
 if __name__ == "__main__":
-    main()
+    run()

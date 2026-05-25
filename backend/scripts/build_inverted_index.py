@@ -20,6 +20,7 @@ def create_term_frequency_dict(text):
 
 
 def build_inverted_index():
+    global english_inverted_index, arabic_inverted_index, document_lengths
     import sqlite3, pandas as pd, os
     conn = sqlite3.connect(DB_PATH)
     sample = pd.read_sql("SELECT Arabic_Text, Preprocessed_Arabic FROM hadiths LIMIT 5", conn)
@@ -69,12 +70,16 @@ def build_inverted_index():
         pickle.dump(document_lengths,f)
 
 
-if __name__ == "__main__":
+def run():
+    global english_inverted_index, arabic_inverted_index, document_lengths
+    english_inverted_index = {}
+    arabic_inverted_index = {}
+    document_lengths = {}
+
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR = os.path.join(BASE_DIR, "..", "data")
     DB_PATH = os.path.join(DATA_DIR, "hadiths.db")
 
-    #English Inverted Index first
     connection = sqlite3.connect(DB_PATH)
     df = pd.read_sql("SELECT * FROM HADITHS", connection)
     import time
@@ -82,3 +87,6 @@ if __name__ == "__main__":
     build_inverted_index()
     end = time.perf_counter()
     print(f"Inverted Index building took {round(end-start,3)}s")
+
+if __name__ == "__main__":
+    run()

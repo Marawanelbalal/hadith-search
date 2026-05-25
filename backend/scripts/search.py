@@ -12,7 +12,7 @@ from collections import Counter
 InvertedIndex = dict[str, list[tuple[int, int]]]
 
 load_dotenv()
-JINA_API_KEY = os.getenv("JINA_API_KEY2")
+JINA_API_KEY = os.getenv("JINA_API_KEY")
 
 def ranked_term_overlap(query: str, language: str, inverted_index) -> dict[int, int]:
     query = preprocess_arabic(query) if language == "AR" else preprocess_english(query)

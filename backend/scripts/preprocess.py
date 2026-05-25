@@ -131,11 +131,12 @@ def preprocess_arabic(text):
     processed = process_arabic_tokens(disambiguated, tokens)  # pass original tokens as fallback
     return " ".join(processed)
 
-if __name__ == "__main__":
+def run():
     import os
     import sqlite3
     import pandas as pd
     import time
+    from concurrent.futures import ThreadPoolExecutor
     start = time.perf_counter()
 
     DB_PATH = os.path.join(os.path.dirname(__file__),'..','data','hadiths.db')
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     connection = sqlite3.connect(DB_PATH)
 
     df = pd.read_sql("SELECT * FROM HADITHS;", connection)
-    
+
     cursor = connection.cursor()
 
     try:
@@ -151,30 +152,50 @@ if __name__ == "__main__":
         cursor.execute("ALTER TABLE hadiths ADD COLUMN Preprocessed_Arabic TEXT")
         connection.commit()
     except sqlite3.OperationalError:
-        pass  # in case of running the script more than once and the columns already exist
+        pass
     connection.commit()
+
     try:
-        for row in df.itertuples():
-            cursor.execute("""
-                UPDATE hadiths 
-                SET Preprocessed_English = ?, Preprocessed_Arabic = ?
-                WHERE id = ?
-            """, (preprocess_english(row.English_Text), 
-                preprocess_arabic(row.Arabic_Text), 
-                row.id))
+        print("Preprocessing English text...")
+        english_t0 = time.perf_counter()
+        english_results = [preprocess_english(r.English_Text) for r in df.itertuples()]
+        print(f"  Done in {time.perf_counter() - english_t0:.2f}s")
+
+        print("Preprocessing Arabic text...")
+        arabic_t0 = time.perf_counter()
+        arabic_texts = df["Arabic_Text"].tolist()
+        try:
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                arabic_results = list(ex.map(preprocess_arabic, arabic_texts))
+            print(f"  Done in {time.perf_counter() - arabic_t0:.2f}s (parallel)")
+        except Exception:
+            print("  ThreadPoolExecutor failed, falling back to sequential...")
+            arabic_results = [preprocess_arabic(t) for t in arabic_texts]
+            print(f"  Done in {time.perf_counter() - arabic_t0:.2f}s (sequential)")
+
+        updates = [(en, ar, r.id) for r, en, ar in zip(df.itertuples(), english_results, arabic_results)]
+        cursor.executemany("""
+            UPDATE hadiths
+            SET Preprocessed_English = ?, Preprocessed_Arabic = ?
+            WHERE id = ?
+        """, updates)
+        connection.commit()
+
         print("Preprocessing Successful, current state of DB:")
-        df = pd.read_sql("SELECT * FROM HADITHS LIMIT 20", connection)
-        for index,row in df.iterrows():
+        preview = pd.read_sql("SELECT * FROM HADITHS LIMIT 20", connection)
+        for index,row in preview.iterrows():
             print(f"Hadith: {index}\n")
             print(f"English Text: {row['English_Text']}\n")
             print(f"Arabic Text: {row['Arabic_Text']}\n")
             print(f"English Text After Preprocessing: {row['Preprocessed_English']}\n")
             print(f"Arabic Text After Preprocessing: {row['Preprocessed_Arabic']}\n")
             print("\n\n")
-        print(df.info())
-        connection.commit()
+        print(preview.info())
         print("Successful")
     finally:
         connection.close()
     end = time.perf_counter()
     print(f"Total Time Taken: {end-start}s")
+
+if __name__ == "__main__":
+    run()

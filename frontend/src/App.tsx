@@ -8,6 +8,7 @@ import DevBenchmarkPage from './pages/DevBenchmarkPage';
 import DevComparePage from './pages/DevComparePage';
 import DevAnnotationPage from './pages/DevAnnotationPage';
 import DevAnnotationSessionPage from './pages/DevAnnotationSessionPage';
+import KvVerificationPage from './pages/KvVerificationPage';
 import SigninPage from './pages/SigninPage';
 import SignupPage from './pages/SignupPage';
 import AnnotationGuidelinesPage from './pages/AnnotationGuidelinesPage';
@@ -40,6 +41,7 @@ const App = () => {
           <Route path="annotation/signup" element={<SignupPage />} />
           <Route path="annotation/guidelines" element={<AnnotationGuidelinesPage />} />
           <Route path="annotation/:queryId" element={<DevAnnotationSessionPage />} />
+          <Route path="kv-pairs" element={<KvVerificationPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={defaultPath} replace />} />

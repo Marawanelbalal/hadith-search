@@ -3,6 +3,7 @@ const ar: Record<string, string> = {
   'nav.benchmarks': 'المعايير',
   'nav.algorithmComparison': 'مقارنة',
   'nav.annotation': 'التقييم',
+  'nav.kvPairs': 'أزواج KV',
   'home.title': 'بحث الحديث',
   'home.subtitle': 'ابحث في أكثر من 33,000 حديث نبوي موثّق. استكشف الكتب الستة الصحاح بخوارزميات استرجاع متقدمة.',
   'home.popular': 'شائع:',

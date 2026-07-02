@@ -75,5 +75,38 @@ def init_annotation_tables():
     conn.close()
 
 
+def init_kv_pairs_table():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS kv_pairs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic TEXT NOT NULL,
+            language TEXT NOT NULL,
+            concept_en TEXT NOT NULL,
+            concept_ar TEXT NOT NULL,
+            entity_en TEXT NOT NULL,
+            entity_ar TEXT NOT NULL,
+            hadith_id INTEGER NOT NULL,
+            hadith_en TEXT,
+            hadith_ar TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            verified_at TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_kv_pairs_status ON kv_pairs(status)
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_kv_pairs_topic ON kv_pairs(topic)
+    """)
+
+    conn.commit()
+    conn.close()
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat()

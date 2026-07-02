@@ -3,6 +3,7 @@ const en: Record<string, string> = {
   'nav.benchmarks': 'Benchmarks',
   'nav.algorithmComparison': 'Compare',
   'nav.annotation': 'Annotation',
+  'nav.kvPairs': 'KV Pairs',
   'home.title': 'Hadith Search',
   'home.subtitle': 'Search across 33,000+ authenticated prophetic narrations. Explore the six canonical collections with advanced retrieval algorithms.',
   'home.popular': 'Popular:',

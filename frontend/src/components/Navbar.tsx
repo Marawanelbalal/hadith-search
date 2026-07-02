@@ -22,6 +22,7 @@ const Navbar = () => {
         { labelKey: 'nav.benchmarks', path: '/dev/benchmark', icon: 'analytics' },
         { labelKey: 'nav.algorithmComparison', path: '/dev/compare', icon: 'compare_arrows' },
         { labelKey: 'nav.annotation', path: '/dev/annotation', icon: 'edit_note' },
+        { labelKey: 'nav.kvPairs', path: '/dev/kv-pairs', icon: 'fact_check' },
       ]
     : [{ labelKey: 'nav.search', path: '/user/search', icon: 'search' }];
 

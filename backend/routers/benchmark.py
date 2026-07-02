@@ -10,6 +10,8 @@ DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")
 QUERIES_PATH = os.path.join(DATA_DIR, "queries.json")
 QRELS_RESULTS_PATH = os.path.join(DATA_DIR, "qrels_results.json")
 STATS_RESULTS_PATH = os.path.join(DATA_DIR, "stats_results.json")
+FINETUNED_RESULTS_PATH = os.path.join(DATA_DIR, "finetuned_results.json")
+FINETUNED_STATS_PATH_TEMPLATE = os.path.join(DATA_DIR, "finetuned_stats_{mode}.json")
 
 
 def load_json(path: str):
@@ -49,3 +51,18 @@ def benchmark_qrels(hadiths_df=Depends(get_hadiths_df)):
         ),
         "qrels": enhanced,
     }
+
+
+@router.get("/finetuned")
+def finetuned_results():
+    if not os.path.exists(FINETUNED_RESULTS_PATH):
+        return {"error": "No fine-tuned results found. Run finetune_eval.py first."}
+    return load_json(FINETUNED_RESULTS_PATH)
+
+
+@router.get("/finetuned-stats")
+def finetuned_stats(mode: str = "combined"):
+    path = FINETUNED_STATS_PATH_TEMPLATE.format(mode=mode)
+    if not os.path.exists(path):
+        return {"error": f"No fine-tuned stats found for mode '{mode}'. Run finetune_eval.py first."}
+    return load_json(path)

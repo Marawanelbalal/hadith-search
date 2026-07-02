@@ -1,4 +1,5 @@
 aiofiles==25.1.0
+accelerate==1.14.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3
 aiosignal==1.4.0
@@ -54,6 +55,7 @@ numpy==1.26.4
 orjson==3.11.7
 packaging==26.0
 pandas==3.0.1
+peft==0.19.1
 pickledb==1.6
 propcache==0.4.1
 PyArabic==0.6.15

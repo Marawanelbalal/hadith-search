@@ -67,4 +67,14 @@ def get_english_lemmatizer():
 @lru_cache()
 def get_model():
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer("intfloat/multilingual-e5-large")
+    model = SentenceTransformer("intfloat/multilingual-e5-large")
+
+    adapter_path = os.getenv("FINETUNED_ADAPTER_PATH", "")
+    if adapter_path and os.path.exists(adapter_path):
+        from peft import PeftModel
+        model[0].auto_model = PeftModel.from_pretrained(
+            model[0].auto_model, adapter_path,
+        )
+        model[0].auto_model = model[0].auto_model.merge_and_unload()
+
+    return model

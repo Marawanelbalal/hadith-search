@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../api/config';
+import { useAuth } from '../api/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Hadith {
@@ -37,6 +38,7 @@ const GRADE_COLORS: Record<number, string> = {
 const DevAnnotationSessionPage = () => {
   const { queryId } = useParams<{ queryId: string }>();
   const navigate = useNavigate();
+  const { token, loading: authLoading, authFetch } = useAuth();
   const [state, setState] = useState<AnnotationState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +49,11 @@ const DevAnnotationSessionPage = () => {
   const fetchState = useCallback(async () => {
     if (!queryId) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/annotation/${queryId}/current`);
+      const response = await authFetch(`${API_BASE_URL}/annotation/${queryId}/current`);
+      if (response.status === 401) {
+        navigate('/dev/annotation/signin');
+        return;
+      }
       if (!response.ok) throw new Error('Failed to fetch state');
       const data = await response.json();
       setState(data);
@@ -56,11 +62,16 @@ const DevAnnotationSessionPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [queryId]);
+  }, [queryId, authFetch, navigate]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      navigate('/dev/annotation/signin');
+      return;
+    }
     fetchState();
-  }, [fetchState]);
+  }, [token, authLoading, navigate, fetchState]);
 
   const saveLabel = async (index: number, label: number) => {
     if (!queryId || !state) return;
@@ -70,7 +81,7 @@ const DevAnnotationSessionPage = () => {
     setFlashGrade(label);
     setSaving(true);
     try {
-      await fetch(`${API_BASE_URL}/annotation/${queryId}/label`, {
+      await authFetch(`${API_BASE_URL}/annotation/${queryId}/label`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,7 +111,7 @@ const DevAnnotationSessionPage = () => {
     if (index < 0 || index >= state.total) return;
 
     try {
-      await fetch(`${API_BASE_URL}/annotation/${queryId}/navigate?index=${index}`, {
+      await authFetch(`${API_BASE_URL}/annotation/${queryId}/navigate?index=${index}`, {
         method: 'POST'
       });
       setState(prev => prev ? { ...prev, current_index: index } : null);
@@ -126,10 +137,28 @@ const DevAnnotationSessionPage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state]);
 
-  if (loading || !state) return <LoadingSpinner />;
+  if (authLoading || loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <main className="flex-grow w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-4 page-enter">
+        <div className="bg-error-container text-on-error-container p-4 rounded-lg">
+          Error: {error}
+        </div>
+        <button
+          onClick={() => navigate('/dev/annotation')}
+          className="text-primary dark:text-dark-primary hover:underline"
+        >
+          Back to annotation list
+        </button>
+      </main>
+    );
+  }
+
+  if (!state) return <LoadingSpinner />;
 
   const currentHadith = state.pooled_hadiths[state.current_index];
-  const currentLabel = currentHadith ? state.labels[String(currentHadith.hadith_id)] : null;
+  const currentLabel = currentHadith ? state.labels[String(currentHadith.hadith_id)] : undefined;
 
   const gradeCounts = [0, 1, 2].map(g => ({
     grade: g,
@@ -317,7 +346,7 @@ const DevAnnotationSessionPage = () => {
       </div>
 
       <div className="text-center text-sm text-on-surface-variant dark:text-dark-on-surface-variant">
-        Keyboard shortcuts: <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">0</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">1</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">2</kbd> to grade • <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">←</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">→</kbd> to navigate
+        Keyboard shortcuts: <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">0</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">1</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">2</kbd> to grade • <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">&larr;</kbd> <kbd className="px-1.5 py-0.5 bg-surface-variant dark:bg-dark-surface-variant rounded">&rarr;</kbd> to navigate
       </div>
     </main>
   );

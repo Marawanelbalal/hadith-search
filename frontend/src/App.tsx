@@ -8,6 +8,9 @@ import DevBenchmarkPage from './pages/DevBenchmarkPage';
 import DevComparePage from './pages/DevComparePage';
 import DevAnnotationPage from './pages/DevAnnotationPage';
 import DevAnnotationSessionPage from './pages/DevAnnotationSessionPage';
+import SigninPage from './pages/SigninPage';
+import SignupPage from './pages/SignupPage';
+import AnnotationGuidelinesPage from './pages/AnnotationGuidelinesPage';
 
 const getInitialMode = (): string => localStorage.getItem('app_mode') || 'user';
 
@@ -33,6 +36,9 @@ const App = () => {
           <Route path="benchmark" element={<DevBenchmarkPage />} />
           <Route path="compare" element={<DevComparePage />} />
           <Route path="annotation" element={<DevAnnotationPage />} />
+          <Route path="annotation/signin" element={<SigninPage />} />
+          <Route path="annotation/signup" element={<SignupPage />} />
+          <Route path="annotation/guidelines" element={<AnnotationGuidelinesPage />} />
           <Route path="annotation/:queryId" element={<DevAnnotationSessionPage />} />
         </Route>
 

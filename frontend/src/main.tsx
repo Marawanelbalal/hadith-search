@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { LanguageProvider } from './i18n/LanguageProvider.tsx'
 import { ApiProvider } from './api/ApiContext.tsx'
+import { AuthProvider } from './api/AuthContext'
 
 // Initialize theme
 const initializeTheme = () => {
@@ -23,7 +24,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LanguageProvider>
       <ApiProvider>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </ApiProvider>
     </LanguageProvider>
   </StrictMode>,

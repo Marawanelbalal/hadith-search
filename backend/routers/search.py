@@ -163,7 +163,7 @@ def semantic_rerank(
     embeddings = english_embeddings if lang == "en" else arabic_embeddings
     bm25_results = bm25(req.query, lang.upper(), idx, document_lengths)
     candidate_ids = list(bm25_results.keys())[:50]
-    raw = semantic_reranker(req.query, candidate_ids, model, embeddings, hadith_ids, top_k=10)
+    raw = semantic_reranker(req.query, lang.upper(), candidate_ids, model, embeddings, hadith_ids, top_k=10)
     results = build_results(raw, hadiths_df, req.grade_filter, req.book_filter)
     elapsed = (time.perf_counter() - t0) * 1000
     return SearchResponse(number_of_results=len(results), results=results, response_time_ms=round(elapsed, 2))
@@ -181,7 +181,7 @@ def cosine_similarity(
     t0 = time.perf_counter()
     lang = req.lang.value
     embeddings = english_embeddings if lang == "en" else arabic_embeddings
-    raw = semantic_search_e5(req.query, model, embeddings, hadith_ids, top_k=20)
+    raw = semantic_search_e5(req.query, lang, model, embeddings, hadith_ids, top_k=20)
     results = build_results(raw, hadiths_df, req.grade_filter, req.book_filter)
     elapsed = (time.perf_counter() - t0) * 1000
     return SearchResponse(number_of_results=len(results), results=results, response_time_ms=round(elapsed, 2))

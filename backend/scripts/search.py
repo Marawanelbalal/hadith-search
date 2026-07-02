@@ -5,7 +5,7 @@ from camel_tools.utils.dediac import dediac_ar
 import sqlite3
 import numpy as np
 import pandas as pd
-from math import log10
+from math import log
 from scripts.loading import get_english_inverted_index, get_arabic_inverted_index, get_document_lengths, get_hadith_ids, get_hadiths_df
 import requests
 from collections import Counter
@@ -43,10 +43,10 @@ def tf_idf(query: str, language: str, inverted_index, document_lengths) -> dict[
         if term not in inverted_index:
             continue
         postings = inverted_index[term]
-        idf = log10(len(document_lengths) / len(postings))
+        idf = log(len(document_lengths) / len(postings))
         for posting in postings:
             hadith_id = posting[0]
-            normalized_tf = 1 + log10(posting[1])
+            normalized_tf = 1 + log(posting[1])
             tf_idf_score = normalized_tf * idf
             final_score = term_query_frequency[term] * tf_idf_score
             document_scores[hadith_id] = document_scores.get(hadith_id, 0) + final_score
@@ -66,7 +66,7 @@ def query_expansion(query: str, top_hadiths: list[str], language: str, inverted_
         if term not in inverted_index or term in query_vector:
             continue
         df = len(inverted_index[term])
-        idf = log10((total_docs - df + 0.5) / (df + 0.5))
+        idf = log((total_docs - df + 0.5) / (df + 0.5))
         pool_scores[term] = (tf / len(top_hadiths)) * idf
     sorted_expansion = sorted(pool_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
     max_pool_score = max(pool_scores.values()) if pool_scores else 1
@@ -92,7 +92,7 @@ def bm25(query: str, language: str, inverted_index, document_lengths, k1: float 
             continue
         postings = inverted_index[term]
         df = len(postings)
-        idf = log10((len(document_lengths) - df + 0.5) / (df + 0.5))
+        idf = log((len(document_lengths) - df + 0.5) / (df + 0.5))
         for hadith_id, tf in postings:
             ld = document_lengths[hadith_id][lang_idx]
             tf_component = ((k1 + 1) * tf) / (k1 * ((1 - b) + b * (ld / lavg)) + tf)
@@ -180,10 +180,7 @@ def cosine_similarity_search(
     top_k_indices = np.argpartition(-scores, top_k - 1)[:top_k]
     top_k_indices = top_k_indices[np.argsort(-scores[top_k_indices])]
 
-    return {
-        int(hadith_ids[idx]): float(scores[idx])
-        for idx in top_k_indices
-    }
+    return {int(hadith_ids[idx]): float(scores[idx]) for idx in top_k_indices}
 def semantic_search_e5(
     query: str,
     language: str,
@@ -195,10 +192,10 @@ def semantic_search_e5(
     """
     Dense semantic retrieval using E5-style query formatting.
     """
-    if language == "EN":
-        query_text = query   # NO prefix
-    else:
+    if language == "AR":
         query_text = f"query: {normalize_arabic_text(dediac_ar(query))}"
+    else:
+        query_text = f"query: {query}"
     query_embedding = model.encode([query_text])[0]
 
     return cosine_similarity_search(
@@ -209,15 +206,16 @@ def semantic_search_e5(
     )
 
 def semantic_reranker(query: str, language : str, candidate_ids: list[int], model, embeddings: np.ndarray, hadith_ids: np.ndarray, top_k: int = 50) -> dict[int, float]:
-    if language == "EN":
-        e5_query = query   # NO prefix
-    else:
+    if language == "AR":
         e5_query = f"query: {normalize_arabic_text(dediac_ar(query))}"
+    else:
+        e5_query = f"query: {query}"
     query_embedding = model.encode([e5_query])[0]
     query_embedding = query_embedding / np.linalg.norm(query_embedding)
+    id2idx = build_id2idx(hadith_ids)
     scores = {}
     for hadith_id in candidate_ids:
-        idx = np.where(hadith_ids == hadith_id)[0][0]
+        idx = id2idx[int(hadith_id)]
         doc_embedding = embeddings[idx]
         doc_embedding = doc_embedding / np.linalg.norm(doc_embedding)
         scores[hadith_id] = float(np.dot(query_embedding, doc_embedding))
@@ -321,7 +319,6 @@ def cross_encoder_rerank(
     )
     print(response.status_code)
     results = response.json()["results"]
-    time.sleep(60)
     return {
         valid_ids[r["index"]]: float(r["relevance_score"])
         for r in results

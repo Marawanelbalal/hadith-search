@@ -31,12 +31,14 @@ def run():
     model = SentenceTransformer("intfloat/multilingual-e5-large", device=device)
 
     print("Generating English embeddings...")
-    en_embeddings = model.encode(df["English_Text"].tolist(), batch_size=32, show_progress_bar=True)
+    en_texts = [f"passage: {text}" for text in df["English_Text"].tolist()]
+    en_embeddings = model.encode(en_texts, batch_size=32, show_progress_bar=True)
     np.save(os.path.join(BASE_DIR, "..", "data", "english_embeddings.npy"), en_embeddings)
     print("English embeddings saved")
 
     print("Generating Arabic embeddings...")
-    ar_embeddings = model.encode(df["Arabic_Text"].tolist(), batch_size=32, show_progress_bar=True)
+    ar_texts = [f"passage: {text}" for text in df["Arabic_Text"].tolist()]
+    ar_embeddings = model.encode(ar_texts, batch_size=32, show_progress_bar=True)
     np.save(os.path.join(BASE_DIR, "..", "data", "arabic_embeddings.npy"), ar_embeddings)
     print("Arabic embeddings saved")
 

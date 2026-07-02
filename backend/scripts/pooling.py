@@ -13,6 +13,8 @@ from scripts.search import (
     final_search_pipeline,
     get_hadith
 )
+from scripts.preprocess import normalize_arabic_text
+from camel_tools.utils.dediac import dediac_ar
 
 from scripts.loading import (
     get_english_inverted_index,
@@ -52,7 +54,10 @@ def pool_query(query: str, language: str, per_algo_size : int = 100) -> list[int
     bm25_scores = bm25_with_expansion(query, language, index, doc_lengths, get_hadith)
     bm25_top = list(bm25_scores.keys())[:per_algo_size]
 
-    e5_query = f"query: {query}"
+    if language == "AR":
+        e5_query = f"query: {normalize_arabic_text(dediac_ar(query))}"
+    else:
+        e5_query = f"query: {query}"
     query_emb = model.encode([e5_query])[0]
     cosine_scores = cosine_similarity_search(query_emb, embeddings, hadith_ids, top_k=50)
     cosine_top = list(cosine_scores.keys())[:per_algo_size]

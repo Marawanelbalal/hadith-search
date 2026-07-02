@@ -23,19 +23,16 @@ def f1_score(retrieved : set[int], relevant : set[int]) -> float:
     return fbeta_score(retrieved,relevant,1)
 
 def precision_at_k(retrieved : list[int], relevant : set[int], k : int = 10) -> float:
-    if k < len(retrieved):
-        retrieved = retrieved[:k]
-    return precision(set(retrieved),relevant)
+    retrieved = retrieved[:k]
+    return len(set(retrieved) & relevant) / k if k != 0 else 0
 
 def recall_at_k(retrieved : list[int], relevant : set[int], k : int = 10) -> float:
-    if k < len(retrieved):
-        retrieved = retrieved[:k]
+    retrieved = retrieved[:k]
     return recall(set(retrieved),relevant)
 
 def fbeta_score_at_k(retrieved : list[int], relevant : set[int], beta : float = 1.0, k : int = 10) -> float:
-    if k < len(retrieved):
-        retrieved = retrieved[:k]
-    P = precision(set(retrieved),relevant)
+    retrieved = retrieved[:k]
+    P = len(set(retrieved) & relevant) / k if k != 0 else 0
     R = recall(set(retrieved),relevant)
     numerator = (beta**2 + 1) * P * R
     denominator = (beta**2 * P) + R
@@ -76,8 +73,7 @@ def jaccard_similarity(retrieved : set[int], relevant : set[int]) -> float:
     return I / U if U != 0 else 0
 
 def jaccard_similarity_at_k(retrieved : list[int], relevant : set[int], k : int = 10) -> float:
-    if k < len(retrieved):
-        retrieved = retrieved[:k]
+    retrieved = retrieved[:k]
     return jaccard_similarity(set(retrieved),relevant)
 
 def dcg(retrieved : list[int], relevant : graded_relevant_list) -> float:
@@ -85,17 +81,18 @@ def dcg(retrieved : list[int], relevant : graded_relevant_list) -> float:
     for i in range(len(retrieved)):
         if retrieved[i] in relevant:
             grade = relevant[retrieved[i]]
-            dg = grade / log2(i + 2)
+            dg = (2**grade - 1) / log2(i + 2)
             dcg_score += dg
     return dcg_score
 
 def dcg_at_k(retrieved : list[int], relevant : graded_relevant_list, k : int = 10) -> float:
-    if k < len(retrieved):
-        retrieved = retrieved[:k]
+    retrieved = retrieved[:k]
     return dcg(retrieved, relevant)
 
-def ideal_dcg(relevant : graded_relevant_list) -> float:
+def ideal_dcg(relevant : graded_relevant_list, k : int | None = None) -> float:
     sorted_relevant = sorted(relevant, key=relevant.get, reverse=True)
+    if k is not None:
+        sorted_relevant = sorted_relevant[:k]
     return dcg(sorted_relevant,relevant)
 
 def normalized_dcg(retrieved : list[int], relevant : graded_relevant_list) -> float:
@@ -105,7 +102,7 @@ def normalized_dcg(retrieved : list[int], relevant : graded_relevant_list) -> fl
 
 def normalized_dcg_at_k(retrieved : list[int], relevant : graded_relevant_list, k : int = 10) -> float:
     dcg_score = dcg_at_k(retrieved,relevant,k)
-    idcg_score = ideal_dcg(relevant)
+    idcg_score = ideal_dcg(relevant,k)
     return dcg_score/idcg_score if idcg_score != 0 else 0
 
 def reciprocal_rank(retrieved : list[int], relevant : set[int]) -> float:

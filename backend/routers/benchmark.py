@@ -9,6 +9,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")
 QUERIES_PATH = os.path.join(DATA_DIR, "queries.json")
 QRELS_RESULTS_PATH = os.path.join(DATA_DIR, "qrels_results.json")
+STATS_RESULTS_PATH = os.path.join(DATA_DIR, "stats_results.json")
 
 
 def load_json(path: str):
@@ -19,6 +20,14 @@ def load_json(path: str):
 @router.get("/results")
 def benchmark_results():
     return load_json(QRELS_RESULTS_PATH)
+
+
+@router.get("/stats")
+def benchmark_stats():
+    path = STATS_RESULTS_PATH
+    if not os.path.exists(path):
+        return {"error": "No stats results found. Run evaluation first."}
+    return load_json(path)
 
 
 @router.get("/qrels")

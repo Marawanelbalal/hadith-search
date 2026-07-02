@@ -199,6 +199,10 @@ if __name__ == "__main__":
         get_hadith_ids,
         get_model
     )
+    from datetime import datetime
+    from scripts.stats_tests import (
+        run_analysis, generate_latex_table, filter_graded_queries,
+    )
 
 
     BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -421,8 +425,60 @@ if __name__ == "__main__":
 
         all_results[system_name] = system_block
 
+    graded_qids = {
+        qid for qid, rel in zip(query_ids, relevant_list) if len(rel) > 0
+    }
+    filtered_results = filter_graded_queries(all_results, graded_qids)
+
+    print(f"\n{'='*60}")
+    print(f"Statistical Analysis ({len(graded_qids)} graded queries)")
+    print(f"{'='*60}")
+
+    stats_output = run_analysis(
+        filtered_results,
+        baseline="BM25",
+        k=k,
+    )
+
+    latex_table = generate_latex_table(
+        filtered_results,
+        stats_output["pairwise_tests"],
+        baseline="BM25",
+        k=k,
+    )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_stamped = RESULTS_PATH.replace(".json", f"_{timestamp}.json")
+    stats_path = os.path.join(DATA_DIR, "stats_results.json")
+    stats_stamped = stats_path.replace(".json", f"_{timestamp}.json")
+    latex_path = os.path.join(DATA_DIR, "results_table.tex")
+    latex_stamped = latex_path.replace(".tex", f"_{timestamp}.tex")
+
     with open(RESULTS_PATH, "w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=2, ensure_ascii=False)
-    print(f"\nResults saved → {RESULTS_PATH}")
+    with open(results_stamped, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, indent=2, ensure_ascii=False)
+
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(stats_output, f, indent=2, ensure_ascii=False)
+    with open(stats_stamped, "w", encoding="utf-8") as f:
+        json.dump(stats_output, f, indent=2, ensure_ascii=False)
+
+    with open(latex_path, "w", encoding="utf-8") as f:
+        f.write(latex_table)
+    with open(latex_stamped, "w", encoding="utf-8") as f:
+        f.write(latex_table)
+
+    print(f"\nResults saved      -> {RESULTS_PATH}")
+    print(f"Results archived   -> {results_stamped}")
+    print(f"Stats saved        -> {stats_path}")
+    print(f"Stats archived     -> {stats_stamped}")
+    print(f"LaTeX table        -> {latex_path}")
+    print(f"LaTeX archived     -> {latex_stamped}")
+
+    print(f"\nBest systems per metric (graded queries only):")
+    for metric, best_sys in stats_output["summary"]["best_systems"].items():
+        mean_val = filtered_results[best_sys]["MEAN"]["Metrics"].get(metric, 0.0)
+        print(f"  {metric:12s}: {best_sys} ({float(mean_val):.4f})")
 
 

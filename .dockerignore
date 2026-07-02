@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Python virtual env & cache
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Node modules & build artifacts (rebuilt in Docker)
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+
+# Data files — mounted as volume at runtime, not baked into image
+backend/data/
+
+# Environment files — secrets set via Dokploy env vars
+.env
+*/.env
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker artifacts
+Dockerfile
+docker-compose.yml
+docker-entrypoint.sh
+.dockerignore
+
+# Documentation (not needed in image)
+README.md
+*.md

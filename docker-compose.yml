@@ -1,0 +1,26 @@
+services:
+  hadith-search:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hadith-search
+    ports:
+      - "8000:8000"
+    environment:
+      # annotation = lightweight (no E5/index preload), search = lazy E5, research = eager E5
+      - APP_MODE=annotation
+      # Comma-separated origins, or * for all (disables credentials)
+      - CORS_ORIGINS=*
+      # Path to frontend build (defaults to ../static or ../frontend/dist)
+      # - STATIC_DIR=/app/static
+      # Jina API keys for cross-encoder reranking (search mode only)
+      # - JINA_API_KEY=your_key_here
+    volumes:
+      # Mount the entire data directory as a persistent volume
+      # Upload hadiths.db, queries.json, qrels_ungraded.json here
+      # For search mode: also upload embeddings (.npy) and indexes (.pkl)
+      - hadith-data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  hadith-data:

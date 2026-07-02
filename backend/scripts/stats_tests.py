@@ -338,6 +338,300 @@ def run_analysis(
     }
 
 
+E5_DEPENDENT_SYSTEMS = [
+    "COSINE_SIMILARITY",
+    "BM25_SEMANTIC_RERANK",
+    "BM25_RRF",
+    "FINAL_PIPELINE",
+]
+
+FINETUNE_MODES = ["triplet", "kv_pairs", "combined"]
+
+FINETUNE_MODE_LABELS = {
+    "triplet": r"FT(triplet)",
+    "kv_pairs": r"FT(kv)",
+    "combined": r"FT(combined)",
+}
+
+
+def run_cross_config_tests(
+    baseline_results: dict,
+    finetuned_results: dict,
+    metrics: Optional[list] = None,
+    e5_systems: Optional[list] = None,
+) -> dict:
+    if metrics is None:
+        metrics = METRICS
+    if e5_systems is None:
+        e5_systems = E5_DEPENDENT_SYSTEMS
+
+    tests = {}
+    for system_name in e5_systems:
+        if system_name not in baseline_results:
+            continue
+        tests[system_name] = {}
+        for metric in metrics:
+            baseline_vals = extract_per_query_metrics(
+                {system_name: baseline_results[system_name]}, metric
+            ).get(system_name, [])
+            if not baseline_vals:
+                continue
+
+            tests[system_name][metric] = {}
+            for mode, ft_results in finetuned_results.items():
+                if system_name not in ft_results:
+                    continue
+                ft_vals = extract_per_query_metrics(
+                    {system_name: ft_results[system_name]}, metric
+                ).get(system_name, [])
+                if not ft_vals or len(baseline_vals) != len(ft_vals):
+                    continue
+
+                key = f"{mode} vs baseline"
+                mean_diff = float(np.mean(ft_vals) - np.mean(baseline_vals))
+                direction = "better" if mean_diff > 0 else ("worse" if mean_diff < 0 else "same")
+                tests[system_name][metric][key] = {
+                    "t_test": paired_t_test(ft_vals, baseline_vals),
+                    "wilcoxon": wilcoxon_signed_rank(ft_vals, baseline_vals),
+                    "mean_diff": mean_diff,
+                    "direction": direction,
+                    "n_queries": len(baseline_vals),
+                    "baseline_mean": float(np.mean(baseline_vals)),
+                    "finetuned_mean": float(np.mean(ft_vals)),
+                }
+    return tests
+
+
+def generate_comparison_latex_table(
+    baseline_results: dict,
+    finetuned_results: dict,
+    cross_config: dict,
+    metrics: Optional[list] = None,
+    e5_systems: Optional[list] = None,
+) -> str:
+    if metrics is None:
+        metrics = METRICS
+    if e5_systems is None:
+        e5_systems = E5_DEPENDENT_SYSTEMS
+
+    n_met = len(metrics)
+    lines = []
+    lines.append(r"\begin{table*}[t]")
+    lines.append(r"\centering")
+    lines.append(
+        r"\caption{Impact of LoRA fine-tuning on E5-dependent retrieval systems. "
+        r"Baseline uses pretrained \mbox{multilingual-e5-large}. "
+        r"FT(triplet), FT(kv), and FT(combined) use LoRA adapters trained with "
+        r"contrastive, cross-concept alignment, and combined objectives. "
+        r"Best per system per metric in \textbf{bold}. "
+        r"* and ** denote significant improvement over baseline "
+        r"at $p<0.05$ and $p<0.01$ (paired t-test).}"
+    )
+    lines.append(r"\label{tab:finetune-comparison}")
+    lines.append(r"\small")
+    col_spec = "ll" + "c" * n_met
+    lines.append(rf"\begin{{tabular}}{{{col_spec}}}")
+    lines.append(r"\toprule")
+
+    header_parts = [r"\textbf{System}", r"\textbf{Mode}"]
+    for metric in metrics:
+        display = METRIC_DISPLAY.get(metric, metric)
+        header_parts.append(rf"\textbf{{{display}}}")
+    lines.append(" & ".join(header_parts) + r" \\")
+    lines.append(r"\midrule")
+
+    for system_name in e5_systems:
+        if system_name not in baseline_results:
+            continue
+
+        all_vals = {}
+        for metric in metrics:
+            all_vals[metric] = {}
+            mean_data = baseline_results[system_name].get("MEAN", {}).get("Metrics", {})
+            all_vals[metric]["baseline"] = float(mean_data.get(metric, 0.0))
+            for mode, ft_results in finetuned_results.items():
+                if system_name in ft_results:
+                    ft_mean = ft_results[system_name].get("MEAN", {}).get("Metrics", {})
+                    all_vals[metric][mode] = float(ft_mean.get(metric, 0.0))
+
+        best_mode = {}
+        for metric in metrics:
+            vals = all_vals[metric]
+            if vals:
+                best_mode[metric] = max(vals, key=vals.get)
+            else:
+                best_mode[metric] = None
+
+        display_name = system_name.replace("_", r"\_")
+
+        row_parts = [display_name, "Baseline"]
+        for metric in metrics:
+            val = all_vals[metric].get("baseline", 0.0)
+            cell = f"{val:.3f}"
+            if best_mode[metric] == "baseline":
+                cell = r"\textbf{" + cell + "}"
+            row_parts.append(cell)
+        lines.append(" & ".join(row_parts) + r" \\")
+
+        for mode in FINETUNE_MODES:
+            if mode not in finetuned_results:
+                continue
+            if system_name not in finetuned_results[mode]:
+                continue
+
+            row_parts = ["", FINETUNE_MODE_LABELS[mode]]
+            for metric in metrics:
+                val = all_vals[metric].get(mode, 0.0)
+                cell = f"{val:.3f}"
+                if best_mode[metric] == mode:
+                    cell = r"\textbf{" + cell + "}"
+                test_data = cross_config.get(system_name, {}).get(metric, {}).get(f"{mode} vs baseline", {})
+                t_test = test_data.get("t_test", {})
+                direction = test_data.get("direction", "same")
+                p_val = t_test.get("p_value")
+                if p_val is not None and direction == "better":
+                    if t_test.get("significant_at_0.01"):
+                        cell += "**"
+                    elif t_test.get("significant_at_0.05"):
+                        cell += "*"
+                row_parts.append(cell)
+            lines.append(" & ".join(row_parts) + r" \\")
+
+        lines.append(r"\midrule")
+
+    if lines[-1] == r"\midrule":
+        lines.pop()
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table*}")
+
+    return "\n".join(lines)
+
+
+def generate_delta_table(
+    baseline_results: dict,
+    finetuned_results: dict,
+    metrics: Optional[list] = None,
+    e5_systems: Optional[list] = None,
+) -> dict:
+    if metrics is None:
+        metrics = METRICS
+    if e5_systems is None:
+        e5_systems = E5_DEPENDENT_SYSTEMS
+
+    deltas = {}
+    for system_name in e5_systems:
+        if system_name not in baseline_results:
+            continue
+        deltas[system_name] = {}
+        for metric in metrics:
+            baseline_val = baseline_results[system_name].get("MEAN", {}).get("Metrics", {}).get(metric, 0.0)
+            deltas[system_name][metric] = {}
+            for mode, ft_results in finetuned_results.items():
+                if system_name not in ft_results:
+                    continue
+                ft_val = ft_results[system_name].get("MEAN", {}).get("Metrics", {}).get(metric, 0.0)
+                if baseline_val > 0:
+                    delta_pct = ((ft_val - baseline_val) / baseline_val) * 100
+                else:
+                    delta_pct = 0.0
+                deltas[system_name][metric][mode] = {
+                    "baseline": float(baseline_val),
+                    "finetuned": float(ft_val),
+                    "delta": float(ft_val - baseline_val),
+                    "delta_pct": round(delta_pct, 2),
+                }
+
+    averages = {}
+    for metric in metrics:
+        averages[metric] = {}
+        for mode in FINETUNE_MODES:
+            if mode not in finetuned_results:
+                continue
+            pct_vals = []
+            for system_name in e5_systems:
+                if system_name in deltas and metric in deltas[system_name] and mode in deltas[system_name][metric]:
+                    pct_vals.append(deltas[system_name][metric][mode]["delta_pct"])
+            if pct_vals:
+                averages[metric][mode] = round(sum(pct_vals) / len(pct_vals), 2)
+
+    return {"per_system": deltas, "averages": averages}
+
+
+def generate_delta_latex_table(delta_data: dict, metrics: Optional[list] = None) -> str:
+    if metrics is None:
+        metrics = METRICS
+
+    available_modes = [
+        m for m in FINETUNE_MODES
+        if m in delta_data.get("averages", {}).get(metrics[0], {})
+    ]
+    if not available_modes:
+        return ""
+
+    lines = []
+    lines.append(r"\begin{table}[htbp]")
+    lines.append(r"\centering")
+    lines.append(
+        r"\caption{Relative improvement (\%) from LoRA fine-tuning "
+        r"averaged across 6 IR metrics. Positive values indicate "
+        r"improvement over baseline.}"
+    )
+    lines.append(r"\label{tab:finetune-delta}")
+    lines.append(r"\small")
+    col_spec = "l" + "c" * len(available_modes)
+    lines.append(rf"\begin{{tabular}}{{{col_spec}}}")
+    lines.append(r"\toprule")
+
+    header_parts = [r"\textbf{System}"]
+    for mode in available_modes:
+        header_parts.append(rf"\textbf{{{FINETUNE_MODE_LABELS[mode]}}}")
+    lines.append(" & ".join(header_parts) + r" \\")
+    lines.append(r"\midrule")
+
+    e5_systems = list(delta_data.get("per_system", {}).keys())
+
+    for system_name in e5_systems:
+        display_name = system_name.replace("_", r"\_")
+        row_parts = [display_name]
+        for mode in available_modes:
+            pct_vals = []
+            for metric in metrics:
+                sys_data = delta_data["per_system"].get(system_name, {}).get(metric, {}).get(mode)
+                if sys_data:
+                    pct_vals.append(sys_data["delta_pct"])
+            if pct_vals:
+                avg = sum(pct_vals) / len(pct_vals)
+                sign = "+" if avg >= 0 else ""
+                row_parts.append(f"{sign}{avg:.1f}\\%")
+            else:
+                row_parts.append("--")
+        lines.append(" & ".join(row_parts) + r" \\")
+
+    lines.append(r"\midrule")
+
+    row_parts = [r"\textbf{Average}"]
+    for mode in available_modes:
+        pct_vals = []
+        for metric in metrics:
+            val = delta_data["averages"].get(metric, {}).get(mode)
+            if val is not None:
+                pct_vals.append(val)
+        if pct_vals:
+            avg = sum(pct_vals) / len(pct_vals)
+            sign = "+" if avg >= 0 else ""
+            row_parts.append(rf"\textbf{{{sign}{avg:.1f}\%}}")
+        else:
+            row_parts.append("--")
+    lines.append(" & ".join(row_parts) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
+
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR = os.path.join(BASE_DIR, "..", "data")

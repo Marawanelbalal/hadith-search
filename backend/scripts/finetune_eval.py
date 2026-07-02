@@ -126,7 +126,7 @@ def run_evaluation(mode, k=20):
 
     QUERIES_PATH = os.path.join(DATA_DIR, "queries.json")
     QRELS_GRADED_PATH = os.path.join(DATA_DIR, "qrels_graded.json")
-    RESULTS_PATH = os.path.join(DATA_DIR, "finetuned_results.json")
+    RESULTS_PATH = os.path.join(DATA_DIR, f"finetuned_results_{mode}.json")
 
     with open(QUERIES_PATH, encoding="utf-8") as f:
         queries_data = json.load(f)
@@ -295,7 +295,7 @@ def run_evaluation(mode, k=20):
     )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_stamped = RESULTS_PATH.replace(".json", f"_{mode}_{timestamp}.json")
+    results_stamped = RESULTS_PATH.replace(".json", f"_{timestamp}.json")
     stats_path = os.path.join(DATA_DIR, f"finetuned_stats_{mode}.json")
     stats_stamped = stats_path.replace(".json", f"_{timestamp}.json")
     latex_path = os.path.join(DATA_DIR, f"finetuned_results_table_{mode}.tex")

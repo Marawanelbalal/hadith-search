@@ -9,11 +9,15 @@ export const getAppMode = (): string => localStorage.getItem(APP_MODE_KEY) || 'u
 
 export const setAppMode = (mode: string) => localStorage.setItem(APP_MODE_KEY, mode);
 
-const Navbar = () => {
+interface NavbarProps {
+  mode: string;
+  onModeChange: (mode: string) => void;
+}
+
+const Navbar = ({ mode, onModeChange }: NavbarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const mode = getAppMode();
   const isDev = mode === 'dev';
 
   const navLinks = isDev
@@ -34,20 +38,13 @@ const Navbar = () => {
     if (isDev) {
       if (isSearch) {
         navigate('/user/search');
-      } else if (!isLanding) {
-        navigate('/user/');
       } else {
         navigate('/user/');
       }
     } else {
-      if (isSearch || isLanding) {
-        navigate('/dev/search');
-      } else {
-        navigate('/dev/search');
-      }
+      navigate('/dev/search');
     }
-    const newMode = isDev ? 'user' : 'dev';
-    setAppMode(newMode);
+    onModeChange(isDev ? 'user' : 'dev');
   };
 
   return (

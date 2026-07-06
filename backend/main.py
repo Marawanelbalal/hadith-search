@@ -106,17 +106,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routers.search import router as search_router
-from routers.benchmark import router as benchmark_router
 from routers.annotation import router as annotation_router
 from routers.auth import router as auth_router
 from routers.kv_pairs import router as kv_pairs_router
 
-app.include_router(search_router)
-app.include_router(benchmark_router)
 app.include_router(annotation_router)
 app.include_router(auth_router)
 app.include_router(kv_pairs_router)
+
+if APP_MODE != "annotation":
+    from routers.search import router as search_router
+    from routers.benchmark import router as benchmark_router
+    app.include_router(search_router)
+    app.include_router(benchmark_router)
 
 
 @app.get("/hadith/{hadith_id}")

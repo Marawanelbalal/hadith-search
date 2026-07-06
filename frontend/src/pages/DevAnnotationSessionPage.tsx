@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../api/AuthContext';
@@ -45,24 +45,7 @@ const DevAnnotationSessionPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [flashGrade, setFlashGrade] = useState<number | null>(null);
   const lastSavedRef = useRef<number>(0);
-
-  const fetchState = useCallback(async () => {
-    if (!queryId) return;
-    try {
-      const response = await authFetch(`${API_BASE_URL}/annotation/${queryId}/current`);
-      if (response.status === 401) {
-        navigate('/dev/annotation/signin');
-        return;
-      }
-      if (!response.ok) throw new Error('Failed to fetch state');
-      const data = await response.json();
-      setState(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }, [queryId, authFetch, navigate]);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -70,16 +53,40 @@ const DevAnnotationSessionPage = () => {
       navigate('/dev/annotation/signin');
       return;
     }
-    fetchState();
-  }, [token, authLoading, navigate, fetchState]);
+
+    let mounted = true;
+    const fetchData = async () => {
+      if (!queryId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await authFetch(`${API_BASE_URL}/annotation/${queryId}/current`);
+        if (response.status === 401) {
+          navigate('/dev/annotation/signin');
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to fetch state');
+        const data = await response.json();
+        if (mounted) setState(data);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { mounted = false };
+  }, [token, authLoading, navigate, authFetch, queryId]);
 
   const saveLabel = async (index: number, label: number) => {
     if (!queryId || !state) return;
     const hadith = state.pooled_hadiths[index];
     if (!hadith) return;
+    if (savingRef.current) return;
 
     setFlashGrade(label);
     setSaving(true);
+    savingRef.current = true;
     try {
       await authFetch(`${API_BASE_URL}/annotation/${queryId}/label`, {
         method: 'POST',
@@ -99,10 +106,12 @@ const DevAnnotationSessionPage = () => {
         current_index: index + 1
       } : null);
       setSaving(false);
+      savingRef.current = false;
     } catch (err) {
       console.error('Failed to save label:', err);
       setFlashGrade(null);
       setSaving(false);
+      savingRef.current = false;
     }
   };
 
@@ -123,6 +132,7 @@ const DevAnnotationSessionPage = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!state) return;
+      if (savingRef.current) return;
 
       if (e.key === 'ArrowRight') {
         navigateTo(state.current_index + 1);
@@ -193,7 +203,7 @@ const DevAnnotationSessionPage = () => {
       <div className="w-full bg-surface-variant dark:bg-dark-surface-variant rounded-full h-2">
         <div
           className="bg-primary dark:bg-dark-primary h-2 rounded-full transition-all duration-300"
-          style={{ width: `${((state.current_index + 1) / state.total) * 100}%` }}
+          style={{ width: `${Math.min(100, ((state.current_index + 1) / state.total) * 100)}%` }}
         />
       </div>
 

@@ -36,9 +36,9 @@ const DevComparePage = () => {
   const controllerARef = useRef<AbortController | null>(null);
   const controllerBRef = useRef<AbortController | null>(null);
 
-  const buildRequest = (searchQuery: string, searchLang: Lang): SearchRequest => ({ query: searchQuery, lang: searchLang, grade_filter: selectedGrade, book_filter: selectedBook });
+  const buildRequest = (searchQuery: string, searchLang: Lang, overrideGrade?: string | null, overrideBook?: string | null): SearchRequest => ({ query: searchQuery, lang: searchLang, grade_filter: overrideGrade ?? selectedGrade, book_filter: overrideBook ?? selectedBook });
 
-  const runComparison = (searchQuery: string, searchLang: Lang) => {
+  const runComparison = (searchQuery: string, searchLang: Lang, overrideGrade?: string | null, overrideBook?: string | null) => {
     if (!searchQuery.trim()) return;
     if (algorithmA === algorithmB) return;
 
@@ -56,7 +56,7 @@ const DevComparePage = () => {
     setIsLoadingA(true);
     setIsLoadingB(true);
 
-    const req = buildRequest(searchQuery, searchLang);
+    const req = buildRequest(searchQuery, searchLang, overrideGrade, overrideBook);
 
     search(algorithmA, req, controllerARef.current.signal).then((res) => {
       setResultsA(res.results);
@@ -91,6 +91,9 @@ const DevComparePage = () => {
   const handleFilterChange = (grade: string | null, book: string | null) => {
     setSelectedGrade(grade);
     setSelectedBook(book);
+    if (hasCompared && query.trim()) {
+      runComparison(query, lang, grade, book);
+    }
   };
 
   const handleSortChange = (mode: 'grade-relevance' | 'relevance') => {

@@ -30,10 +30,16 @@ const DevBenchmarkPage = () => {
   const [benchmarkResults, setBenchmarkResults] = useState<BenchmarkResults | null>(null);
 
   useEffect(() => {
-    Promise.all([getQrels(), getBenchmarks()]).then(([qrels, benchmarks]) => {
-      setQrelData(qrels as { description: string; qrels: Record<string, { query: string; grades: Record<string, unknown> }> });
-      setBenchmarkResults(benchmarks);
-    });
+    const fetchData = async () => {
+      try {
+        const [qrels, benchmarks] = await Promise.all([getQrels(), getBenchmarks()]);
+        setQrelData(qrels as { description: string; qrels: Record<string, { query: string; grades: Record<string, unknown> }> });
+        setBenchmarkResults(benchmarks);
+      } catch {
+        // errors handled by ApiContext
+      }
+    };
+    fetchData();
   }, [getQrels, getBenchmarks]);
 
   return (

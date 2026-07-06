@@ -13,12 +13,14 @@ export class ApiError extends Error {
 
 export const searchHadiths = async (
   algorithm: string,
-  request: SearchRequest
+  request: SearchRequest,
+  signal?: AbortSignal
 ): Promise<SearchResponse> => {
   const response = await fetch(`${API_BASE_URL}/search/${algorithm}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
+    signal,
   });
 
   if (!response.ok) {

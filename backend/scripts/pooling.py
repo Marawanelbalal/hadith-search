@@ -81,7 +81,7 @@ def pool_query(query: str, language: str, per_algo_size : int = 100) -> list[int
     combined = set(bm25_top) | set(cosine_top) | set(pipeline_top)
     return list(combined)
 
-if __name__ == "__main__":
+def run():
     print("Loading queries.json...")
     with open(os.path.join(DATA_DIR, "queries.json"), encoding="utf-8") as f:
         queries = json.load(f)
@@ -111,3 +111,7 @@ if __name__ == "__main__":
         json.dump(qrels_ungraded, f, ensure_ascii=False, indent=2)
 
     print(f"\nSaved to: {output_path}")
+
+
+if __name__ == "__main__":
+    run()

@@ -26,7 +26,10 @@ const DevAnnotationPage = () => {
       return;
     }
 
+    let mounted = true;
     const fetchQueries = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await authFetch(`${API_BASE_URL}/annotation/queries`);
         if (response.status === 401) {
@@ -35,14 +38,15 @@ const DevAnnotationPage = () => {
         }
         if (!response.ok) throw new Error('Failed to fetch queries');
         const data = await response.json();
-        setQueries(data.queries);
+        if (mounted) setQueries(data.queries);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        if (mounted) setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     fetchQueries();
+    return () => { mounted = false };
   }, [token, authLoading, navigate, authFetch]);
 
   const handleSignout = async () => {

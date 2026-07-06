@@ -1,4 +1,4 @@
-import { createContext, useState, useRef, useCallback, type ReactNode } from 'react';
+import { createContext, useState, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { searchHadiths, getBenchmarkResults, getBenchmarkQrels, getHadithById } from './services';
 import type { SearchResponse, BenchmarkResults, SearchRequest } from '../types';
 
@@ -43,6 +43,7 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
 
   const searchControllerRef = useRef<AbortController | null>(null);
   const benchmarksControllerRef = useRef<AbortController | null>(null);
+  const qrelsControllerRef = useRef<AbortController | null>(null);
   const hadithControllerRef = useRef<AbortController | null>(null);
 
   const clearError = useCallback((operation: keyof ApiState['errors']) => {
@@ -120,11 +121,11 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const getQrels = useCallback(async () => {
-    if (benchmarksControllerRef.current) {
-      benchmarksControllerRef.current.abort();
+    if (qrelsControllerRef.current) {
+      qrelsControllerRef.current.abort();
     }
     const controller = new AbortController();
-    benchmarksControllerRef.current = controller;
+    qrelsControllerRef.current = controller;
 
     setLoading((prev) => ({ ...prev, benchmarks: true }));
     setErrors((prev) => ({ ...prev, benchmarks: null }));
@@ -169,7 +170,7 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value: ApiContextValue = {
+  const value = useMemo<ApiContextValue>(() => ({
     loading,
     errors,
     search,
@@ -180,7 +181,7 @@ export const ApiProvider = ({ children }: { children: ReactNode }) => {
     cancelBenchmarks,
     cancelHadith,
     clearError,
-  };
+  }), [loading, errors, search, getBenchmarks, getQrels, getHadith, cancelSearch, cancelBenchmarks, cancelHadith, clearError]);
 
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>;
 };

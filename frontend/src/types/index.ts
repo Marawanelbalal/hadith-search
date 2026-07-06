@@ -64,7 +64,7 @@ export const BOOK_SLUGS = [
 ] as const;
 
 export type Algorithm =
-  | 'boolean'
+  | 'term-overlap'
   | 'tfidf'
   | 'bm25'
   | 'bm25-tf-idf'

@@ -3,7 +3,6 @@ import pickle
 import numpy as np
 import pandas as pd
 from functools import lru_cache
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "..", "data")

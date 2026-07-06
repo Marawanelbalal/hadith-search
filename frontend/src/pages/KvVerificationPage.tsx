@@ -96,7 +96,13 @@ const KvVerificationPage = () => {
       });
       if (!res.ok) throw new Error('Failed to verify');
       setPairs((prev) => prev.filter((p) => p.id !== pairId));
+      setTotal((prev) => Math.max(0, prev - 1));
       fetchStats();
+      if (pairs.length <= 1 && offset > 0) {
+        setOffset(Math.max(0, offset - PAGE_SIZE));
+      } else {
+        fetchPairs();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

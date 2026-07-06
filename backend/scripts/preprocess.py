@@ -51,6 +51,13 @@ def preprocess_english(text):
     return " ".join(final_tokens)       
 
 
+def has_text(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return bool(text) and text.lower() not in {"nan", "none", "null"}
+
+
 # Arabic pipeline
 def normalize_arabic_stopwords(stopwords: set) -> set:
     result = set()
@@ -147,51 +154,107 @@ def run():
 
     cursor = connection.cursor()
 
-    try:
-        cursor.execute("ALTER TABLE hadiths ADD COLUMN Preprocessed_English TEXT")
-        cursor.execute("ALTER TABLE hadiths ADD COLUMN Preprocessed_Arabic TEXT")
-        connection.commit()
-    except sqlite3.OperationalError:
-        pass
+    preprocessing_columns = [
+        "Preprocessed_English",
+        "Preprocessed_Arabic",
+        "Preprocessed_English_Isnad",
+        "Preprocessed_Arabic_Isnad",
+        "Preprocessed_English_Matn",
+        "Preprocessed_Arabic_Matn",
+    ]
+    for column in preprocessing_columns:
+        try:
+            cursor.execute(f"ALTER TABLE hadiths ADD COLUMN {column} TEXT")
+            connection.commit()
+        except sqlite3.OperationalError:
+            pass
     connection.commit()
 
     try:
-        print("Preprocessing English text...")
+        def _text(row, column):
+            value = getattr(row, column, "")
+            return value if value else ""
+
+        print("Preprocessing full English text...")
         english_t0 = time.perf_counter()
-        english_results = [preprocess_english(r.English_Text) for r in df.itertuples()]
+        english_results = [preprocess_english(_text(r, "English_Text")) if _text(r, "English_Text") else "" for r in df.itertuples()]
         print(f"  Done in {time.perf_counter() - english_t0:.2f}s")
 
-        print("Preprocessing Arabic text...")
+        print("Preprocessing full Arabic text...")
         arabic_t0 = time.perf_counter()
         arabic_texts = df["Arabic_Text"].tolist()
         try:
             with ThreadPoolExecutor(max_workers=4) as ex:
-                arabic_results = list(ex.map(preprocess_arabic, arabic_texts))
+                arabic_results = list(ex.map(lambda t: preprocess_arabic(t) if t else "", arabic_texts))
             print(f"  Done in {time.perf_counter() - arabic_t0:.2f}s (parallel)")
         except Exception:
             print("  ThreadPoolExecutor failed, falling back to sequential...")
-            arabic_results = [preprocess_arabic(t) for t in arabic_texts]
+            arabic_results = [preprocess_arabic(t) if t else "" for t in arabic_texts]
             print(f"  Done in {time.perf_counter() - arabic_t0:.2f}s (sequential)")
 
-        updates = [(en, ar, r.id) for r, en, ar in zip(df.itertuples(), english_results, arabic_results)]
+        print("Preprocessing English isnad text...")
+        isnad_en_t0 = time.perf_counter()
+        isnad_en_results = [preprocess_english(_text(r, "English_Isnad")) if _text(r, "English_Isnad") else "" for r in df.itertuples()]
+        print(f"  Done in {time.perf_counter() - isnad_en_t0:.2f}s")
+
+        print("Preprocessing Arabic isnad text...")
+        isnad_ar_t0 = time.perf_counter()
+        isnad_ar_texts = df["Arabic_Isnad"].tolist()
+        try:
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                isnad_ar_results = list(ex.map(lambda t: preprocess_arabic(t) if t else "", isnad_ar_texts))
+            print(f"  Done in {time.perf_counter() - isnad_ar_t0:.2f}s (parallel)")
+        except Exception:
+            print("  ThreadPoolExecutor failed, falling back to sequential...")
+            isnad_ar_results = [preprocess_arabic(t) if t else "" for t in isnad_ar_texts]
+            print(f"  Done in {time.perf_counter() - isnad_ar_t0:.2f}s (sequential)")
+
+        print("Preprocessing English matn text...")
+        matn_en_t0 = time.perf_counter()
+        matn_en_results = [preprocess_english(_text(r, "English_Matn")) if _text(r, "English_Matn") else "" for r in df.itertuples()]
+        print(f"  Done in {time.perf_counter() - matn_en_t0:.2f}s")
+
+        print("Preprocessing Arabic matn text...")
+        matn_ar_t0 = time.perf_counter()
+        matn_ar_texts = df["Arabic_Matn"].tolist()
+        try:
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                matn_ar_results = list(ex.map(lambda t: preprocess_arabic(t) if t else "", matn_ar_texts))
+            print(f"  Done in {time.perf_counter() - matn_ar_t0:.2f}s (parallel)")
+        except Exception:
+            print("  ThreadPoolExecutor failed, falling back to sequential...")
+            matn_ar_results = [preprocess_arabic(t) if t else "" for t in matn_ar_texts]
+            print(f"  Done in {time.perf_counter() - matn_ar_t0:.2f}s (sequential)")
+
+        empty_matn_en = [int(r.id) for r, value in zip(df.itertuples(), matn_en_results) if not has_text(value)]
+        empty_matn_ar = [int(r.id) for r, value in zip(df.itertuples(), matn_ar_results) if not has_text(value)]
+        if empty_matn_en or empty_matn_ar:
+            details = []
+            if empty_matn_en:
+                details.append(f"English matn preprocessing produced empty strings for {len(empty_matn_en)} ids: {empty_matn_en[:20]}")
+            if empty_matn_ar:
+                details.append(f"Arabic matn preprocessing produced empty strings for {len(empty_matn_ar)} ids: {empty_matn_ar[:20]}")
+            raise ValueError("; ".join(details))
+
+        updates = [(en, ar, ien, iar, men, mar, r.id) for r, en, ar, ien, iar, men, mar in zip(
+            df.itertuples(),
+            english_results,
+            arabic_results,
+            isnad_en_results,
+            isnad_ar_results,
+            matn_en_results,
+            matn_ar_results,
+        )]
         cursor.executemany("""
             UPDATE hadiths
-            SET Preprocessed_English = ?, Preprocessed_Arabic = ?
+            SET Preprocessed_English = ?, Preprocessed_Arabic = ?,
+                Preprocessed_English_Isnad = ?, Preprocessed_Arabic_Isnad = ?,
+                Preprocessed_English_Matn = ?, Preprocessed_Arabic_Matn = ?
             WHERE id = ?
         """, updates)
         connection.commit()
 
-        print("Preprocessing Successful, current state of DB:")
-        preview = pd.read_sql("SELECT * FROM HADITHS LIMIT 20", connection)
-        for index,row in preview.iterrows():
-            print(f"Hadith: {index}\n")
-            print(f"English Text: {row['English_Text']}\n")
-            print(f"Arabic Text: {row['Arabic_Text']}\n")
-            print(f"English Text After Preprocessing: {row['Preprocessed_English']}\n")
-            print(f"Arabic Text After Preprocessing: {row['Preprocessed_Arabic']}\n")
-            print("\n\n")
-        print(preview.info())
-        print("Successful")
+        print(f"\nPreprocessing Successful. Total time: {time.perf_counter() - start:.2f}s")
     finally:
         connection.close()
     end = time.perf_counter()

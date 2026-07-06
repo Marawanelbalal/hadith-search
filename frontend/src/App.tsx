@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './layouts/Layout';
 import UserHomePage from './pages/UserHomePage';
@@ -13,11 +14,14 @@ import SigninPage from './pages/SigninPage';
 import SignupPage from './pages/SignupPage';
 import AnnotationGuidelinesPage from './pages/AnnotationGuidelinesPage';
 
-const getInitialMode = (): string => localStorage.getItem('app_mode') || 'user';
-
 const App = () => {
-  const mode = getInitialMode();
+  const [mode, setMode] = useState(() => localStorage.getItem('app_mode') || 'user');
   const defaultPath = mode === 'dev' ? '/dev/' : '/user/';
+
+  const handleSetMode = (newMode: string) => {
+    localStorage.setItem('app_mode', newMode);
+    setMode(newMode);
+  };
 
   return (
     <BrowserRouter>
@@ -26,12 +30,12 @@ const App = () => {
         <Route path="/user" element={<Navigate to="/user/" replace />} />
         <Route path="/dev" element={<Navigate to="/dev/" replace />} />
 
-        <Route path="/user/" element={<Layout />}>
+        <Route path="/user/" element={<Layout mode={mode} setMode={handleSetMode} />}>
           <Route index element={<UserHomePage />} />
           <Route path="search" element={<UserSearchPage />} />
         </Route>
 
-        <Route path="/dev/" element={<Layout />}>
+        <Route path="/dev/" element={<Layout mode={mode} setMode={handleSetMode} />}>
           <Route index element={<DevHomePage />} />
           <Route path="search" element={<DevSearchPage />} />
           <Route path="benchmark" element={<DevBenchmarkPage />} />

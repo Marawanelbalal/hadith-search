@@ -33,21 +33,30 @@ const DevSearchPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortMode, setSortMode] = useState<'grade-relevance' | 'relevance'>('grade-relevance');
 
-  const doSearch = () => {
-    if (!query.trim()) return;
+  const doSearch = (
+    overrideQuery?: string,
+    overrideLang?: Lang,
+    overrideGrade?: string | null,
+    overrideBook?: string | null,
+  ) => {
+    const effectiveQuery = overrideQuery ?? query;
+    const effectiveLang = overrideLang ?? lang;
+    const effectiveGrade = overrideGrade ?? selectedGrade;
+    const effectiveBook = overrideBook ?? selectedBook;
+    if (!effectiveQuery.trim()) return;
     const params = new URLSearchParams();
-    params.set('q', query);
-    params.set('lang', lang);
+    params.set('q', effectiveQuery);
+    params.set('lang', effectiveLang);
     params.set('algorithm', selectedAlgorithm);
-    if (selectedGrade) params.set('grade', selectedGrade);
-    if (selectedBook) params.set('book', selectedBook);
+    if (effectiveGrade) params.set('grade', effectiveGrade);
+    if (effectiveBook) params.set('book', effectiveBook);
     setSearchParams(params, { replace: true });
 
     const request: SearchRequest = {
-      query,
-      lang,
-      grade_filter: selectedGrade,
-      book_filter: selectedBook,
+      query: effectiveQuery,
+      lang: effectiveLang,
+      grade_filter: effectiveGrade,
+      book_filter: effectiveBook,
     };
     search(selectedAlgorithm, request).then((response) => {
       setRawResults(response.results);
@@ -59,7 +68,7 @@ const DevSearchPage = () => {
   const handleSearch = (newQuery: string, newLang: Lang) => {
     setQuery(newQuery);
     setLang(newLang);
-    doSearch();
+    doSearch(newQuery, newLang);
   };
 
   const handleAlgorithmChange = (algo: string) => {
@@ -70,7 +79,7 @@ const DevSearchPage = () => {
     setSelectedGrade(grade);
     setSelectedBook(book);
     if (query.trim()) {
-      doSearch();
+      doSearch(undefined, undefined, grade, book);
     }
   };
 
@@ -83,6 +92,7 @@ const DevSearchPage = () => {
     if (searchParams.get('q')) {
       doSearch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sortedResults = useMemo(() => {

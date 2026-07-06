@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api/AuthContext';
 
 const AnnotationGuidelinesPage = () => {
   const navigate = useNavigate();
-  const { assignments } = useAuth();
+  const { assignments, token, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !token) navigate('/dev/annotation/signin');
+  }, [authLoading, token, navigate]);
 
   return (
     <main className="flex-grow w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12 flex flex-col gap-8 page-enter">

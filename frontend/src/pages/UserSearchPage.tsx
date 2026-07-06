@@ -34,22 +34,33 @@ const UserSearchPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortMode, setSortMode] = useState<'grade-relevance' | 'relevance'>('grade-relevance');
 
-  const doSearch = () => {
-    if (!query.trim()) return;
+  const doSearch = (
+    overrideQuery?: string,
+    overrideLang?: Lang,
+    overrideGrade?: string | null,
+    overrideBook?: string | null,
+    overrideAdvanced?: boolean,
+  ) => {
+    const effectiveQuery = overrideQuery ?? query;
+    const effectiveLang = overrideLang ?? lang;
+    const effectiveGrade = overrideGrade ?? selectedGrade;
+    const effectiveBook = overrideBook ?? selectedBook;
+    const effectiveAdvanced = overrideAdvanced ?? advancedMode;
+    if (!effectiveQuery.trim()) return;
     const params = new URLSearchParams();
-    params.set('q', query);
-    params.set('lang', lang);
-    if (selectedGrade) params.set('grade', selectedGrade);
-    if (selectedBook) params.set('book', selectedBook);
-    if (advancedMode) params.set('advanced', 'true');
+    params.set('q', effectiveQuery);
+    params.set('lang', effectiveLang);
+    if (effectiveGrade) params.set('grade', effectiveGrade);
+    if (effectiveBook) params.set('book', effectiveBook);
+    if (effectiveAdvanced) params.set('advanced', 'true');
     setSearchParams(params, { replace: true });
 
-    const algorithm = advancedMode ? ADVANCED_ALGORITHM : DEFAULT_ALGORITHM;
+    const algorithm = effectiveAdvanced ? ADVANCED_ALGORITHM : DEFAULT_ALGORITHM;
     const request: SearchRequest = {
-      query,
-      lang,
-      grade_filter: selectedGrade,
-      book_filter: selectedBook,
+      query: effectiveQuery,
+      lang: effectiveLang,
+      grade_filter: effectiveGrade,
+      book_filter: effectiveBook,
     };
     search(algorithm, request).then((response) => {
       setRawResults(response.results);
@@ -61,21 +72,22 @@ const UserSearchPage = () => {
   const handleSearch = (newQuery: string, newLang: Lang) => {
     setQuery(newQuery);
     setLang(newLang);
-    doSearch();
+    doSearch(newQuery, newLang);
   };
 
   const handleFilterChange = (grade: string | null, book: string | null) => {
     setSelectedGrade(grade);
     setSelectedBook(book);
     if (query.trim()) {
-      doSearch();
+      doSearch(undefined, undefined, grade, book);
     }
   };
 
   const handleAdvancedToggle = () => {
-    setAdvancedMode((v) => !v);
+    const newAdvanced = !advancedMode;
+    setAdvancedMode(newAdvanced);
     if (query.trim()) {
-      doSearch();
+      doSearch(undefined, undefined, undefined, undefined, newAdvanced);
     }
   };
 
@@ -88,6 +100,7 @@ const UserSearchPage = () => {
     if (searchParams.get('q')) {
       doSearch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sortedResults = useMemo(() => {

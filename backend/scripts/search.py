@@ -5,6 +5,7 @@ from camel_tools.utils.dediac import dediac_ar
 import sqlite3
 import numpy as np
 import pandas as pd
+import time
 from math import log
 from scripts.loading import get_english_inverted_index, get_arabic_inverted_index, get_document_lengths, get_hadith_ids, get_hadiths_df
 import requests
@@ -12,7 +13,18 @@ from collections import Counter
 InvertedIndex = dict[str, list[tuple[int, int]]]
 
 load_dotenv()
-JINA_API_KEY = os.getenv("JINA_API_KEY")
+JINA_API_KEY = os.getenv("JINA_API_KEY2")
+JINA_RATE_LIMIT_SECONDS = 30
+_last_jina_call = 0.0
+
+
+def wait_for_jina_rate_limit():
+    global _last_jina_call
+    now = time.monotonic()
+    elapsed = now - _last_jina_call
+    if _last_jina_call and elapsed < JINA_RATE_LIMIT_SECONDS:
+        time.sleep(JINA_RATE_LIMIT_SECONDS - elapsed)
+    _last_jina_call = time.monotonic()
 
 def ranked_term_overlap(query: str, language: str, inverted_index) -> dict[int, int]:
     query = preprocess_arabic(query) if language == "AR" else preprocess_english(query)
@@ -290,7 +302,6 @@ def bm25_semantic_rrf(
     fused = rrf_fusion([bm25_ranked, semantic_ranked], k=rrf_k)
 
     return dict(list(fused.items())[:top_k])
-import time
 def cross_encoder_rerank(
     query: str,
     language: str,
@@ -301,8 +312,11 @@ def cross_encoder_rerank(
     valid_ids = [hid for hid in candidate_ids if hid in hadith_texts]
     if not valid_ids:
         return {}
+    if not JINA_API_KEY:
+        raise RuntimeError("JINA_API_KEY2 is not set; required for Jina cross-encoder reranking")
     query = normalize_arabic_text(dediac_ar(query)) if language == "AR" else query
     documents = [hadith_texts[hid] for hid in valid_ids]
+    wait_for_jina_rate_limit()
     response = requests.post(
     "https://api.jina.ai/v1/rerank",
     headers={
@@ -317,7 +331,8 @@ def cross_encoder_rerank(
         "return_documents": False
     }
     )
-    print(response.status_code)
+    if response.status_code >= 400:
+        raise RuntimeError(f"Jina rerank failed with status {response.status_code}: {response.text[:500]}")
     results = response.json()["results"]
     return {
         valid_ids[r["index"]]: float(r["relevance_score"])

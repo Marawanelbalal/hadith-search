@@ -43,13 +43,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading: true,
   });
 
-  const authFetch = useCallback((url: string, options?: RequestInit): Promise<Response> => {
+  const authFetch = useCallback(async (url: string, options?: RequestInit): Promise<Response> => {
     const token = localStorage.getItem(TOKEN_KEY);
     const headers = new Headers(options?.headers);
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    return fetch(url, { ...options, headers });
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      setState({ token: null, annotator: null, assignments: [], loading: false });
+    }
+    return response;
   }, []);
 
   const fetchMe = useCallback(async (token: string) => {
